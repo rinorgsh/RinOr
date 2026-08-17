@@ -95,12 +95,15 @@ const openTasks = computed(() => r.value.tasks.todo + r.value.tasks.doing);
                 class="rounded-xl border border-line bg-surface px-4 py-3 transition hover:border-line-strong"
             >
                 <p class="flex items-center gap-1.5 text-[11px] tracking-wide text-ink-3 uppercase">
-                    Charge fixe
+                    Abonnements
                     <Repeat class="size-3" />
                 </p>
                 <p class="mt-1 text-lg leading-none">
                     <Money :cents="t.fixed_cents" tone="out" />
                 </p>
+                <!-- Ce montant est le total annuel divisé par 12, pas la somme
+                     des prélèvements du mois : il faut le dire. -->
+                <p class="mt-1 text-[10px] text-ink-3">lissés sur 12 mois</p>
             </Link>
         </div>
 

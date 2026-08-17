@@ -62,6 +62,35 @@ const visible = computed(() => {
     return props.subscriptions;
 });
 
+/**
+ * La liste est coupée en deux : les mensuels et les annuels ne se comparent
+ * pas, et chaque bloc porte son propre sous-total dans son unité.
+ */
+const sections = computed(() =>
+    [
+        {
+            cycle: 'monthly',
+            title: 'Mensuels',
+            unit: 'par mois',
+            items: visible.value.filter((s) => s.cycle === 'monthly'),
+        },
+        {
+            cycle: 'yearly',
+            title: 'Annuels',
+            unit: 'par an',
+            items: visible.value.filter((s) => s.cycle === 'yearly'),
+        },
+    ]
+        .filter((section) => section.items.length > 0)
+        .map((section) => ({
+            ...section,
+            // Sous-total des seuls actifs : un abonnement en pause ne coûte rien.
+            subtotal: section.items
+                .filter((s) => s.is_active)
+                .reduce((sum, s) => sum + s.amount_cents, 0),
+        })),
+);
+
 /** Poids par catégorie, en coût annualisé : mensuels et annuels comparables. */
 const byCategory = computed(() => {
     const map = new Map();
@@ -150,35 +179,68 @@ function togglePause(sub) {
             </Btn>
         </template>
 
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <!-- Les deux montants réellement prélevés, puis leur somme sur un an. -->
+        <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
             <StatTile
-                label="Charge fixe"
+                label="Chaque mois"
                 :cents="summary.monthly_cents"
                 tone="out"
                 accent="var(--series-out)"
-                hint="prélevé chaque mois, annuels lissés"
+                :hint="`${summary.monthly_count} abonnement${summary.monthly_count > 1 ? 's' : ''} mensuel${summary.monthly_count > 1 ? 's' : ''}`"
             />
             <StatTile
-                label="Sur un an"
+                label="Une fois par an"
                 :cents="summary.yearly_cents"
                 tone="out"
-                hint="coût annualisé de tous les actifs"
+                accent="var(--series-out)"
+                :hint="`${summary.yearly_count} abonnement${summary.yearly_count > 1 ? 's' : ''} annuel${summary.yearly_count > 1 ? 's' : ''}`"
             />
-            <div class="rounded-xl border border-line bg-surface p-4">
-                <p class="text-[11px] font-medium tracking-wide text-ink-3 uppercase">Actifs</p>
-                <p class="tnum mt-1.5 text-2xl leading-none text-ink sm:text-[1.75rem]">
-                    {{ summary.active_count }}
+
+            <!-- Le total, avec son calcul écrit : c'est ce qui rend le chiffre
+                 vérifiable au lieu d'être à croire. -->
+            <div
+                class="relative overflow-hidden rounded-xl border border-line-strong bg-surface-2 p-4"
+            >
+                <p class="text-[11px] font-medium tracking-wide text-ink-3 uppercase">
+                    Total sur un an
                 </p>
-                <p v-if="summary.inactive_count" class="mt-1.5 text-xs text-ink-3">
-                    + {{ summary.inactive_count }} en pause
+                <p class="mt-1.5 text-2xl leading-none sm:text-[1.75rem]">
+                    <Money :cents="summary.total_yearly_cents" tone="out" />
+                </p>
+                <p class="tnum mt-1.5 text-xs text-ink-3">
+                    <Money :cents="summary.monthly_cents" /> × 12 +
+                    <Money :cents="summary.yearly_cents" />
                 </p>
             </div>
-            <div class="rounded-xl border border-line bg-surface p-4">
-                <p class="text-[11px] font-medium tracking-wide text-ink-3 uppercase">Le plus lourd</p>
-                <p class="mt-1.5 truncate text-base text-ink">{{ heaviest?.name ?? '—' }}</p>
-                <p v-if="heaviest" class="mt-1.5 text-xs text-ink-3">
-                    <Money :cents="heaviest.monthly_cents" /> / mois
+        </div>
+
+        <!-- Nuance importante, mise à part pour ne pas être confondue avec un
+             montant prélevé. -->
+        <div
+            class="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-xl border border-dashed border-line px-4 py-3"
+        >
+            <span class="text-xs text-ink-3">Si tu provisionnes chaque mois :</span>
+            <Money :cents="summary.smoothed_monthly_cents" class="text-sm font-medium text-ink" />
+            <span class="text-xs text-ink-3">/ mois</span>
+            <span class="text-xs text-ink-3">
+                — c'est le total annuel divisé par 12, pas une somme réellement
+                prélevée.
+            </span>
+        </div>
+
+        <div class="mt-3 grid grid-cols-2 gap-3 lg:gap-4">
+            <div class="rounded-xl border border-line bg-surface px-4 py-3">
+                <p class="text-[11px] tracking-wide text-ink-3 uppercase">Actifs</p>
+                <p class="tnum mt-1 text-lg leading-none text-ink">
+                    {{ summary.active_count }}
+                    <span v-if="summary.inactive_count" class="text-xs text-ink-3">
+                        + {{ summary.inactive_count }} en pause
+                    </span>
                 </p>
+            </div>
+            <div class="rounded-xl border border-line bg-surface px-4 py-3">
+                <p class="text-[11px] tracking-wide text-ink-3 uppercase">Le plus lourd</p>
+                <p class="mt-1 truncate text-sm text-ink">{{ heaviest?.name ?? '—' }}</p>
             </div>
         </div>
 
@@ -205,10 +267,27 @@ function togglePause(sub) {
                     </Btn>
                 </EmptyState>
 
-                <Card v-else flush>
+                <Card v-for="section in sections" :key="section.cycle" flush>
+                    <!-- En-tête de section : le sous-total est dans l'unité du
+                         cycle, jamais converti. -->
+                    <div
+                        class="hairline-b flex items-baseline justify-between gap-3 px-4 py-3 sm:px-5"
+                    >
+                        <span class="text-sm font-medium text-ink">
+                            {{ section.title }}
+                            <span class="tnum ml-1 text-xs font-normal text-ink-3">
+                                {{ section.items.length }}
+                            </span>
+                        </span>
+                        <span class="flex items-baseline gap-1.5">
+                            <Money :cents="section.subtotal" tone="out" class="text-sm font-medium" />
+                            <span class="text-xs text-ink-3">{{ section.unit }}</span>
+                        </span>
+                    </div>
+
                     <ul>
                         <li
-                            v-for="(sub, i) in visible"
+                            v-for="(sub, i) in section.items"
                             :key="sub.id"
                             class="flex items-center gap-2 px-4 sm:px-5"
                             :class="[i > 0 ? 'hairline-t' : '', sub.is_active ? '' : 'opacity-55']"

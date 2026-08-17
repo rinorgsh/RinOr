@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Subscription;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -41,13 +42,47 @@ class SubscriptionController extends Controller
                 ] : null,
             ])->values(),
             'categories' => Category::expense()->orderBy('name')->get(['id', 'name', 'color']),
-            'summary' => [
-                'monthly_cents' => $active->sum(fn (Subscription $s) => $s->monthly_cents),
-                'yearly_cents' => $active->sum(fn (Subscription $s) => $s->yearly_cents),
-                'active_count' => $active->count(),
-                'inactive_count' => $subscriptions->count() - $active->count(),
-            ],
+            'summary' => $this->summary($active, $subscriptions->count()),
         ]);
+    }
+
+    /**
+     * Trois chiffres distincts, parce qu'ils répondent à trois questions
+     * différentes et qu'on les confond facilement :
+     *
+     *  - `monthly_*`  ce qui part du compte CHAQUE mois (mensuels seulement).
+     *  - `yearly_*`   ce qui part UNE FOIS par an (annuels seulement).
+     *  - `total_*`    le coût réel sur douze mois : mensuels × 12 + annuels.
+     *
+     * `smoothed_monthly_cents` est le total annuel divisé par 12 : utile pour
+     * provisionner, mais ce n'est PAS un montant réellement prélevé. Il est
+     * nommé et étiqueté séparément pour qu'on ne le prenne pas pour tel.
+     *
+     * @param  \Illuminate\Support\Collection<int, Subscription>  $active
+     */
+    private function summary(Collection $active, int $totalCount): array
+    {
+        $monthly = $active->where('cycle', Subscription::CYCLE_MONTHLY);
+        $yearly = $active->where('cycle', Subscription::CYCLE_YEARLY);
+
+        $monthlyCents = (int) $monthly->sum('amount_cents');
+        $yearlyCents = (int) $yearly->sum('amount_cents');
+        $totalCents = $monthlyCents * 12 + $yearlyCents;
+
+        return [
+            'monthly_cents' => $monthlyCents,
+            'monthly_count' => $monthly->count(),
+            'monthly_over_year_cents' => $monthlyCents * 12,
+
+            'yearly_cents' => $yearlyCents,
+            'yearly_count' => $yearly->count(),
+
+            'total_yearly_cents' => $totalCents,
+            'smoothed_monthly_cents' => (int) round($totalCents / 12),
+
+            'active_count' => $active->count(),
+            'inactive_count' => $totalCount - $active->count(),
+        ];
     }
 
     public function store(Request $request): RedirectResponse
