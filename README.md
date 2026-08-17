@@ -115,12 +115,27 @@ Trois pièges, tous liés au `.gitignore` :
    déploiement (et il survit aux suivants).
 3. Sans HTTPS, pas d'installation propre → SSL → Let's Encrypt dans Forge.
 
+**Avant le premier déploiement**, authentifie Composer sur le serveur. Sans ça,
+il télécharge les archives depuis `codeload.github.com` de façon anonyme et
+GitHub finit par répondre `HTTP 429` au milieu de l'installation :
+
+```bash
+# en SSH, en tant que forge — un token classic SANS AUCUN SCOPE suffit
+composer config --global --auth github-oauth.github.com TON_TOKEN
+
+# et on évite de taper le plafond en rafale
+echo 'COMPOSER_MAX_PARALLEL_HTTP=6' | sudo tee -a /etc/environment
+```
+
 Script de déploiement :
 
 ```bash
 cd $FORGE_SITE_PATH
 git pull origin $FORGE_SITE_BRANCH
 
+# Pas de --prefer-dist : c'est lui qui interdit à Composer de se rabattre sur
+# un git clone quand le téléchargement d'une archive échoue. Le script par
+# défaut de Forge le met, et transforme un 429 passager en déploiement raté.
 composer install --no-dev --optimize-autoloader --no-interaction
 
 touch database/database.sqlite          # no-op si le fichier existe déjà
