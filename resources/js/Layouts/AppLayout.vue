@@ -39,11 +39,11 @@ const primary = computed(() => [
     { key: 'dashboard', label: 'Tableau', href: nav.value.dashboard, icon: LayoutDashboard },
     { key: 'expenses', label: 'Dépenses', href: nav.value.expenses, icon: Receipt },
     { key: 'incomes', label: 'Rentrées', href: nav.value.incomes, icon: Banknote },
-    { key: 'treasuries', label: 'Caisses', href: nav.value.treasuries, icon: PiggyBank },
+    { key: 'subscriptions', label: 'Abonnements', href: nav.value.subscriptions, icon: Repeat },
 ]);
 
 const secondary = computed(() => [
-    { key: 'subscriptions', label: 'Abonnements', href: nav.value.subscriptions, icon: Repeat },
+    { key: 'treasuries', label: 'Caisses', href: nav.value.treasuries, icon: PiggyBank },
     { key: 'tasks', label: 'À faire', href: nav.value.tasks, icon: ListTodo },
     { key: 'categories', label: 'Catégories', href: nav.value.categories, icon: Tags },
 ]);
@@ -173,11 +173,15 @@ function logout() {
                     v-for="item in primary"
                     :key="item.key"
                     :href="item.href"
-                    class="flex flex-col items-center gap-1 py-1.5 transition"
+                    class="flex min-w-0 flex-col items-center gap-1 px-0.5 py-1.5 transition"
                     :class="isActive(item.href) ? 'text-ink' : 'text-ink-3'"
                 >
-                    <component :is="item.icon" class="size-5" />
-                    <span class="text-[10px] leading-none font-medium">{{ item.label }}</span>
+                    <component :is="item.icon" class="size-5 shrink-0" />
+                    <!-- « Abonnements » est le libellé le plus long : sur un écran
+                         de 320px il doit se tronquer au lieu de casser la grille. -->
+                    <span class="w-full truncate text-center text-[10px] leading-none font-medium">
+                        {{ item.label }}
+                    </span>
                 </Link>
 
                 <button
