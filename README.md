@@ -117,36 +117,93 @@ Trois pièges, tous liés au `.gitignore` :
 
 **Avant le premier déploiement**, authentifie Composer sur le serveur. Sans ça,
 il télécharge les archives depuis `codeload.github.com` de façon anonyme et
-GitHub finit par répondre `HTTP 429` au milieu de l'installation :
+GitHub finit par répondre `HTTP 429` au milieu de l'installation.
+
+Forge lie un `auth.json` dans chaque release (« Linking auth.json file » dans le
+log). C'est là qu'il faut mettre le token — à la racine du site, pas dans une
+release :
 
 ```bash
-# en SSH, en tant que forge — un token classic SANS AUCUN SCOPE suffit
-composer config --global --auth github-oauth.github.com TON_TOKEN
+# /home/forge/rinor.on-forge.com/auth.json
+{
+    "github-oauth": {
+        "github.com": "TON_TOKEN"
+    }
+}
+```
 
-# et on évite de taper le plafond en rafale
+Un token *classic* **sans aucun scope** suffit : pour télécharger des paquets
+publics, il ne sert qu'à identifier l'appelant et lever le plafond (60 → 5 000
+requêtes/heure). Ne lui donne pas `repo`.
+
+Vérification :
+
+```bash
+composer diagnose | grep -i github        # doit signaler un token présent
+```
+
+Et pour ne pas taper le plafond en rafale :
+
+```bash
 echo 'COMPOSER_MAX_PARALLEL_HTTP=6' | sudo tee -a /etc/environment
 ```
 
-Script de déploiement :
+### SQLite et le déploiement « zero downtime »
+
+**À faire avant le premier déploiement réussi, sinon tu perds tes données.**
+
+En mode zero downtime, Forge crée un dossier par release
+(`.../releases/75612865`) et fait pointer un lien symbolique dessus. Tout
+fichier écrit dans le dossier de l'application disparaît donc au déploiement
+suivant : un `touch database/database.sqlite` recréerait une base **vide** à
+chaque déploiement.
+
+La base doit vivre hors des releases :
+
+```bash
+mkdir -p /home/forge/rinor.on-forge.com/shared
+touch /home/forge/rinor.on-forge.com/shared/database.sqlite
+chmod 664 /home/forge/rinor.on-forge.com/shared/database.sqlite
+```
+
+Puis, dans le `.env` du site :
+
+```dotenv
+DB_DATABASE=/home/forge/rinor.on-forge.com/shared/database.sqlite
+```
+
+Laravel lit `env('DB_DATABASE', database_path('database.sqlite'))` : un chemin
+absolu court-circuite entièrement le dossier de release. Le script de
+déploiement n'a alors plus rien à faire côté fichier de base.
+
+(MySQL, que Forge provisionne par défaut, évite ce piège par construction. Si
+tu préfères, c'est un changement de `DB_*` et rien d'autre.)
+
+### Script de déploiement
 
 ```bash
 cd $FORGE_SITE_PATH
-git pull origin $FORGE_SITE_BRANCH
 
 # Pas de --prefer-dist : c'est lui qui interdit à Composer de se rabattre sur
 # un git clone quand le téléchargement d'une archive échoue. Le script par
-# défaut de Forge le met, et transforme un 429 passager en déploiement raté.
+# défaut de Forge le met, et transforme un HTTP 429 passager en déploiement
+# raté.
 composer install --no-dev --optimize-autoloader --no-interaction
 
-touch database/database.sqlite          # no-op si le fichier existe déjà
 php artisan migrate --force
 
+# public/build n'est pas versionné : sans ces deux lignes, le site se charge
+# sans CSS ni JS, ce qui ressemble à un bug de l'app alors qu'il ne manque que
+# le build.
 npm ci
 npm run build
 
 php artisan optimize                    # config + routes + vues en cache
 $FORGE_PHP artisan queue:restart
 ```
+
+En zero downtime, Forge fait lui-même le `git clone` de la release : pas de
+`git pull` dans le script.
 
 `.env` de production :
 
