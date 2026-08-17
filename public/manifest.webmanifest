@@ -1,0 +1,55 @@
+{
+    "name": "RinOr — Comptabilité",
+    "short_name": "RinOr",
+    "description": "Où part ton or : abonnements, dépenses, rentrées et caisses.",
+    "lang": "fr",
+    "dir": "ltr",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "display_override": ["standalone", "minimal-ui"],
+    "orientation": "portrait",
+    "background_color": "#0f0f0e",
+    "theme_color": "#0f0f0e",
+    "categories": ["finance", "productivity"],
+    "icons": [
+        {
+            "src": "/icons/icon-192.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/icons/icon-maskable-512.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "maskable"
+        }
+    ],
+    "shortcuts": [
+        {
+            "name": "Ajouter une dépense",
+            "short_name": "Dépense",
+            "url": "/depenses",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Ajouter une rentrée",
+            "short_name": "Rentrée",
+            "url": "/rentrees",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+        },
+        {
+            "name": "Trésorerie",
+            "short_name": "Caisses",
+            "url": "/tresorerie",
+            "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }]
+        }
+    ]
+}

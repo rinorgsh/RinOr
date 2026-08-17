@@ -37,7 +37,28 @@ class HandleInertiaRequests extends Middleware
     {
         return [
             ...parent::share($request),
-            //
+
+            // Message de confirmation affiché en toast après une écriture.
+            'flash' => fn () => $request->session()->get('flash'),
+
+            'auth' => [
+                'user' => $request->user()
+                    ? ['name' => $request->user()->name, 'email' => $request->user()->email]
+                    : null,
+            ],
+
+            // Les URLs sont partagées ici plutôt que codées en dur dans les
+            // composants Vue : Ziggy n'est pas installé.
+            'nav' => [
+                'dashboard' => route('dashboard'),
+                'subscriptions' => route('subscriptions.index'),
+                'incomes' => route('incomes.index'),
+                'expenses' => route('expenses.index'),
+                'treasuries' => route('treasuries.index'),
+                'tasks' => route('tasks.index'),
+                'categories' => route('categories.index'),
+                'logout' => route('logout'),
+            ],
         ];
     }
 }

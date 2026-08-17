@@ -10,9 +10,12 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.js'],
             refresh: true,
             fonts: [
-                bunny('Instrument Sans', {
-                    weights: [400, 500, 600],
-                }),
+                // UI
+                bunny('Instrument Sans', { weights: [400, 500, 600] }),
+                // Titres — le contraste éditorial du serif porte l'identité
+                bunny('Instrument Serif', { weights: [400] }),
+                // Montants — chiffres tabulaires, alignement vertical parfait
+                bunny('IBM Plex Mono', { weights: [400, 500] }),
             ],
         }),
         tailwindcss(),

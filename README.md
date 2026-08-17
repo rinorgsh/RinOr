@@ -1,55 +1,170 @@
-# Accountable
+# RinOr
 
-Mini app web de comptabilité personnelle. **Stack uniquement — aucune logique métier n'est encore implémentée.**
+> Là où part ton or.
+
+Mini app web de comptabilité personnelle. Le nom est le prénom : **Rin** + **or**.
+
+## Ce qu'elle fait
+
+| Menu | Rôle |
+| --- | --- |
+| **Tableau** | Rentrées et sorties du mois, tendance 6 mois, où part l'argent, ce qui rapporte le plus, prochains prélèvements, tâches en attente |
+| **Dépenses** | Journal daté, une ligne par achat, groupé par jour |
+| **Rentrées** | Journal daté de tout ce qui entre |
+| **Abonnements** | Ce qui se prélève seul, mensuel ou annuel, avec la charge fixe mensualisée |
+| **Caisses** | Argent mis de côté : on y met en disant d'où ça vient, on en sort en disant pourquoi |
+| **À faire** | Tâches avec statut (à faire → en cours → terminé) et priorité |
+| **Catégories** | Pour répondre à « dans quoi part mon argent » et « d'où il vient » |
+
+## Deux règles structurantes
+
+**Les montants sont stockés en centimes entiers** (`amount_cents`), jamais en
+flottants : additionner des `float` sur de l'argent finit toujours par produire
+un écart d'un centime. Le trait `App\Concerns\HasAmount` expose un attribut
+`amount` en euros pour les formulaires et l'affichage.
+
+**Les abonnements ne créent pas d'écritures de dépense.** Ils sont comptés à
+part comme *charge fixe*, ramenés au mois (un annuel compte pour 1/12). Le
+total des sorties du mois = dépenses saisies + charge fixe. C'est ce qui permet
+de voir séparément ce qui est subi et ce qui est décidé.
 
 ## Stack
 
-| Couche | Choix | Version |
-| --- | --- | --- |
-| Backend | Laravel | 13.25 |
-| Runtime | PHP | 8.3 |
-| Pont serveur/client | Inertia.js (`inertiajs/inertia-laravel`) | 3.3 |
-| Frontend | Vue 3 (`@inertiajs/vue3`) | 3.5 |
-| CSS | Tailwind CSS (`@tailwindcss/vite`) | 4 |
-| Build | Vite | 8 |
-| Icônes | `@lucide/vue` | 1 |
-| Base de données | SQLite (`database/database.sqlite`) | — |
-| Tests | PHPUnit | — |
+Laravel 13 · Inertia 3 · Vue 3.5 · Tailwind 4 · Vite 8 · SQLite · PHPUnit
+
+Polices : Instrument Serif (titres) · Instrument Sans (UI) · IBM Plex Mono
+(montants, chiffres tabulaires alignés).
+
+## Design
+
+Direction « ledger chaud » : surfaces noir chaud et bone, neutres sable,
+titres en serif éditorial. **La couleur est réservée au sens** — sens de
+l'argent, séries de graphique, statut de tâche — jamais décorative. L'ambre
+du logotype est la seule exception, et c'est de l'identité.
+
+Les palettes de graphique sont validées par script (bandes de luminosité,
+plancher de chroma, séparation daltonienne, contraste) dans les deux modes.
+Thème clair/sombre : `data-theme` est stampé sur `<html>` avant le premier
+paint, donc pas de flash et une seule source de vérité pour CSS et Tailwind.
+
+Mobile d'abord : barre d'onglets en bas dans la zone du pouce, bouton flottant
+d'ajout, formulaires en feuille qui monte, encoche iOS gérée, champs à 16px
+pour éviter le zoom automatique.
 
 ## Démarrer
 
 ```bash
-composer dev     # serveur + vite + queue en une commande (php artisan dev)
+composer dev      # serveur + vite (php artisan dev)
 ```
 
-Ou séparément :
+## Données
 
 ```bash
-php artisan serve
-npm run dev
+php artisan migrate:fresh --seed          # catégories, abonnements, rentrées, caisses, tâches
+php artisan db:seed --class=DemoSeeder    # + dépenses fictives, pour voir le tableau peuplé
+php artisan app:clear-demo                # retire uniquement les données [démo]
 ```
 
-## Structure front
+Le seeder principal contient de **vraies** données reprises de l'ancien Excel :
+20 abonnements (montants TTC), les rentrées encaissées en 2026, deux caisses
+(dont une réserve TVA) et six tâches issues des anomalies repérées.
 
+## Accès
+
+Mono-utilisateur, **sans route d'inscription** : une URL publique n'expose donc
+aucun formulaire de création de compte. Le compte se crée en ligne de commande.
+
+```bash
+php artisan app:create-user                       # interactif
+echo 'mot-de-passe' | php artisan app:create-user --email=toi@exemple.be
 ```
-resources/js/
-├── app.js          # point d'entrée Inertia
-├── Pages/          # une page = une route Inertia (resolve via import.meta.glob)
-├── Layouts/
-├── Components/
-└── Composables/
+
+Le mot de passe se lit sur stdin en non-interactif plutôt qu'en argument : un
+argument atterrirait dans l'historique du shell et dans la liste des processus.
+
+Toutes les routes sont derrière `auth`. Les tentatives de connexion sont
+limitées à 5 par minute et par couple e-mail + IP, et le message d'erreur est
+identique que l'adresse existe ou non.
+
+## Installation sur l'écran d'accueil (PWA)
+
+L'app s'installe et s'ouvre en plein écran, sans barre d'adresse.
+
+Ce qui est en place : `manifest.webmanifest` (`display: standalone`), icônes
+192/512 + une **maskable** pour Android, `apple-touch-icon` 180 (iOS ignore les
+icônes du manifeste), `theme-color` clair et sombre pour la barre d'état,
+`viewport-fit=cover` + retraits `env(safe-area-inset-*)`, rebond élastique
+désactivé, champs à 16px pour éviter le zoom au focus, raccourcis d'appui long
+(Dépense / Rentrée / Caisses).
+
+Un bandeau explique le geste au premier lancement : bouton d'installation réel
+sur Android (`beforeinstallprompt`), instructions Partager → « Sur l'écran
+d'accueil » sur iOS, qui n'a pas d'API d'installation.
+
+**Pas de service worker.** L'app exige donc le réseau : c'est un choix assumé
+pour garder le code simple. Conséquence à connaître : Chrome sur Android ne
+proposera pas la bannière d'installation native sans service worker (le bouton
+du bandeau, lui, fonctionne). Sur iOS, aucun impact.
+
+### Déployer sur Forge
+
+Trois pièges, tous liés au `.gitignore` :
+
+1. `public/build` n'est pas versionné → le build tourne sur le serveur.
+2. `database/database.sqlite` n'est pas versionné → il faut le créer au premier
+   déploiement (et il survit aux suivants).
+3. Sans HTTPS, pas d'installation propre → SSL → Let's Encrypt dans Forge.
+
+Script de déploiement :
+
+```bash
+cd $FORGE_SITE_PATH
+git pull origin $FORGE_SITE_BRANCH
+
+composer install --no-dev --optimize-autoloader --no-interaction
+
+touch database/database.sqlite          # no-op si le fichier existe déjà
+php artisan migrate --force
+
+npm ci
+npm run build
+
+php artisan optimize                    # config + routes + vues en cache
+$FORGE_PHP artisan queue:restart
 ```
 
-`resources/views/app.blade.php` est la vue racine montée par Inertia
-(`HandleInertiaRequests::$rootView = 'app'`).
+`.env` de production :
 
-L'alias `@` pointe sur `resources/js`.
+```dotenv
+APP_ENV=production
+APP_DEBUG=false
+APP_URL=https://ton-domaine.be          # sert à générer les URLs d'assets
+SESSION_SECURE_COOKIE=true              # le cookie ne part qu'en HTTPS
+DB_CONNECTION=sqlite
+```
+
+Puis, une seule fois : `php artisan app:create-user`.
+
+SQLite suffit largement pour un seul utilisateur. Si tu préfères MySQL (Forge
+en provisionne un par défaut), c'est un changement de `DB_*` et rien d'autre.
+
+## Tests
+
+```bash
+php artisan test        # 28 tests
+```
+
+Ils couvrent : chaque page derrière `auth`, l'absence de route d'inscription,
+l'identité des messages d'erreur de connexion, la limitation des tentatives, le
+manifeste et les dimensions réelles de chaque icône déclarée, l'arithmétique en
+centimes, l'impossibilité de vider une caisse au-delà de son solde, la survie
+des écritures à la suppression d'une catégorie, et un mois de dashboard vide ou
+avec un paramètre `?month=` bricolé.
 
 ## Pas encore branché
 
-Volontairement absent, à ajouter quand le besoin sera défini :
-
-- authentification (pas de starter kit, pas de Breeze)
-- Ziggy (`@routes`) pour les routes nommées côté Vue
-- SSR Inertia
-- modèles, migrations et écrans métier
+- Rentrées récurrentes (un salaire se ressaisit chaque mois à la main).
+- Saisie hors ligne avec synchronisation différée.
+- Export CSV / clôture annuelle.
+- 2FA — le mot de passe est aujourd'hui la seule barrière.
+- Ziggy : les URLs sont partagées via Inertia (`nav`) plutôt que codées en dur.

@@ -1,11 +1,284 @@
 @import 'tailwindcss';
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
-@source '../../storage/framework/views/*.php';
 @source '../js/**/*.vue';
 @source '../views/**/*.blade.php';
 
-@theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
-        'Segoe UI Symbol', 'Noto Color Emoji';
+/*
+ * Thème : le script inline de app.blade.php stampe TOUJOURS data-theme sur
+ * <html> (en résolvant la préférence système au boot). Il n'y a donc qu'une
+ * seule source de vérité, et pas de flash au chargement.
+ */
+@custom-variant dark ([data-theme='dark'] &);
+
+/* ---------------------------------------------------------------------------
+   Jetons — « ledger chaud ». Neutres chauds (bone / sable / noir chaud) ;
+   la couleur est réservée au sens : sens de l'argent, séries de graphique,
+   statut. Jamais décorative.
+--------------------------------------------------------------------------- */
+:root {
+    color-scheme: light;
+
+    --page: #f7f6f2;
+    --surface: #fdfcfa;
+    --surface-2: #f2f1ec;
+    --surface-3: #e9e7e0;
+
+    --ink: #131311;
+    --ink-2: #52514e;
+    --ink-3: #898781;
+
+    --line: #e3e1d9;
+    --line-strong: #c9c6bb;
+
+    /* Sens de l'argent — rôles de statut, toujours doublés d'un signe (+/−) */
+    --pos: #006300; /* texte lisible sur surface claire */
+    --neg: #b52d2d;
+    --pos-soft: #e8f3e8;
+    --neg-soft: #fbeaea;
+
+    /* Séries de graphique (slots catégoriels validés) */
+    --series-in: #1baf7a;
+    --series-out: #eb6834;
+
+    /* Statuts de tâche */
+    --st-doing: #b07000;
+    --st-doing-soft: #fdf2dc;
+    --st-done: #006300;
+    --st-high: #b52d2d;
+
+    /* L'ambre du logotype : le « Or » de RinOr. Bronze profond sur bone,
+       5,2:1 — lisible comme du texte, pas seulement comme un ornement. */
+    --gold: #8a6410;
+
+    --ring: #131311;
+}
+
+:root[data-theme='dark'] {
+    color-scheme: dark;
+
+    --page: #0f0f0e;
+    --surface: #191918;
+    --surface-2: #212120;
+    --surface-3: #2b2b29;
+
+    --ink: #f7f6f2;
+    --ink-2: #c3c2b7;
+    --ink-3: #8d8b83;
+
+    --line: #2c2c2a;
+    --line-strong: #3d3d39;
+
+    --pos: #2fbb2f;
+    --neg: #e66767;
+    --pos-soft: #16240f;
+    --neg-soft: #2a1414;
+
+    --series-in: #199e70;
+    --series-out: #d95926;
+
+    --st-doing: #fab219;
+    --st-doing-soft: #2a1f08;
+    --st-done: #2fbb2f;
+    --st-high: #e66767;
+
+    --gold: #e3b04b;
+
+    --ring: #f7f6f2;
+}
+
+@theme inline {
+    --color-page: var(--page);
+    --color-surface: var(--surface);
+    --color-surface-2: var(--surface-2);
+    --color-surface-3: var(--surface-3);
+
+    --color-ink: var(--ink);
+    --color-ink-2: var(--ink-2);
+    --color-ink-3: var(--ink-3);
+
+    --color-line: var(--line);
+    --color-line-strong: var(--line-strong);
+
+    --color-pos: var(--pos);
+    --color-neg: var(--neg);
+    --color-pos-soft: var(--pos-soft);
+    --color-neg-soft: var(--neg-soft);
+
+    --color-series-in: var(--series-in);
+    --color-series-out: var(--series-out);
+
+    --color-st-doing: var(--st-doing);
+    --color-st-doing-soft: var(--st-doing-soft);
+    --color-gold: var(--gold);
+
+    --color-st-done: var(--st-done);
+    --color-st-high: var(--st-high);
+
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Instrument Serif', ui-serif, Georgia, serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, monospace;
+}
+
+/* ---------------------------------------------------------------------------
+   Base
+--------------------------------------------------------------------------- */
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+        scrollbar-gutter: stable;
+    }
+
+    body {
+        background-color: var(--page);
+        color: var(--ink);
+        font-family: var(--font-sans);
+        font-feature-settings: 'cv05' 1;
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+
+        /* Coupe le rebond élastique de la page : en mode standalone, c'est ce
+           qui trahit le plus « site web » au lieu d'« application ». */
+        overscroll-behavior-y: none;
+    }
+
+    /* Pas de flash gris au tap sur iOS : les états :active du composant
+       suffisent et sont sous notre contrôle. */
+    a,
+    button,
+    [role='button'],
+    label {
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    /* Le texte reste sélectionnable, mais pas les cibles de navigation :
+       un appui long sur un onglet ne doit pas ouvrir la loupe de sélection. */
+    nav a,
+    nav button {
+        -webkit-user-select: none;
+        user-select: none;
+    }
+
+    /* Les titres portent le serif : c'est là que vit l'identité. */
+    h1,
+    h2 {
+        font-family: var(--font-display);
+        font-weight: 400;
+        letter-spacing: -0.01em;
+    }
+
+    /* Tout ce qui est un montant s'aligne verticalement. */
+    .tnum {
+        font-family: var(--font-mono);
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: 'zero' 1;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+        border-radius: 2px;
+    }
+
+    /* iOS zoome sur tout champ sous 16px : on garde 16px sur mobile. */
+    input,
+    select,
+    textarea {
+        font-size: 16px;
+    }
+
+    @media (min-width: 640px) {
+        input,
+        select,
+        textarea {
+            font-size: 0.875rem;
+        }
+    }
+
+    ::placeholder {
+        color: var(--ink-3);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            transition-duration: 0.01ms !important;
+        }
+    }
+}
+
+/* ---------------------------------------------------------------------------
+   Utilitaires de composition
+--------------------------------------------------------------------------- */
+@utility hairline-t {
+    border-top: 1px solid var(--line);
+}
+
+@utility hairline-b {
+    border-bottom: 1px solid var(--line);
+}
+
+/* Trame diagonale discrète : donne de la matière aux zones vides sans bruit. */
+@utility grain {
+    background-image: repeating-linear-gradient(
+        45deg,
+        var(--line) 0,
+        var(--line) 1px,
+        transparent 1px,
+        transparent 7px
+    );
+    opacity: 0.5;
+}
+
+/* Retrait pour la barre d'onglets mobile + encoche iOS. */
+@utility pb-safe {
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 0.5rem);
+}
+
+/* En mode standalone, il n'y a plus de barre d'adresse pour pousser le
+   contenu : l'en-tête doit lui-même dégager la barre d'état. */
+@utility pt-safe {
+    padding-top: calc(env(safe-area-inset-top, 0px) + 0.75rem);
+}
+
+@keyframes rise {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes sheet-up {
+    from {
+        transform: translateY(100%);
+    }
+    to {
+        transform: translateY(0);
+    }
+}
+
+@keyframes fade {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@utility animate-rise {
+    animation: rise 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility animate-sheet {
+    animation: sheet-up 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@utility animate-fade {
+    animation: fade 0.2s ease-out both;
 }
