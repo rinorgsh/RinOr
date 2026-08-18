@@ -37,7 +37,7 @@ class MonthlyReport
     {
         $incomeCents = $this->incomeCents();
         $expenseCents = $this->expenseCents();
-        $fixedCents = $this->fixedChargeCents();
+        $fixedCents = $this->subscriptionsDueCents($this->month);
         $outflowCents = $expenseCents + $fixedCents;
 
         return [
@@ -56,6 +56,9 @@ class MonthlyReport
                 'fixed_cents' => $fixedCents,
                 'outflow_cents' => $outflowCents,
                 'net_cents' => $incomeCents - $outflowCents,
+                // Référence, jamais comptée dans les sorties : c'est le total
+                // annuel divisé par 12, pas un prélèvement.
+                'fixed_smoothed_cents' => $this->smoothedFixedCents(),
                 'savings_rate' => $incomeCents > 0
                     ? round((($incomeCents - $outflowCents) / $incomeCents) * 100, 1)
                     : null,
@@ -66,6 +69,8 @@ class MonthlyReport
             'top_income_sources' => $this->topEntries(Income::class, 'received_on'),
             'top_expenses' => $this->topEntries(Expense::class, 'spent_on'),
             'trend' => $this->trend(),
+            'yearly_due_this_month' => $this->yearlyDueThisMonth(),
+            'unscheduled_yearly_count' => $this->unscheduledYearlyCount(),
             'receivables' => $this->receivables(),
             'tasks' => $this->taskSummary(),
             'upcoming_subscriptions' => $this->upcomingSubscriptions(),
@@ -82,10 +87,57 @@ class MonthlyReport
         return (int) Expense::inMonth($this->month->year, $this->month->month)->sum('amount_cents');
     }
 
-    /** Charge fixe mensuelle : tous les abonnements actifs ramenés au mois. */
-    private function fixedChargeCents(): int
+    /**
+     * Les abonnements réellement prélevés sur le mois donné.
+     *
+     * Un mensuel tombe tous les mois. Un annuel ne tombe que le mois de son
+     * échéance : en août, aucun annuel n'est dû, donc rien ne doit être compté
+     * pour eux. Lisser (annuel / 12) donnait un chiffre qui n'apparaît sur
+     * aucun relevé bancaire — et surtout, il masquait les mois lourds : chez
+     * Rinor, mars encaisse 132 € d'annuels d'un coup.
+     *
+     * Un annuel sans date d'échéance ne peut être placé nulle part : il est
+     * exclu et signalé à part plutôt que réparti arbitrairement.
+     */
+    private function subscriptionsDueCents(CarbonImmutable $month): int
+    {
+        return Subscription::active()->get()->sum(function (Subscription $s) use ($month) {
+            if ($s->cycle === Subscription::CYCLE_MONTHLY) {
+                return $s->amount_cents;
+            }
+
+            return $s->next_due_on?->month === $month->month ? $s->amount_cents : 0;
+        });
+    }
+
+    /** Le total annuel ramené au mois : utile pour provisionner, jamais prélevé tel quel. */
+    private function smoothedFixedCents(): int
     {
         return Subscription::active()->get()->sum(fn (Subscription $s) => $s->monthly_cents);
+    }
+
+    /** Les annuels qui tombent ce mois-ci : ils expliquent les pics. */
+    private function yearlyDueThisMonth(): array
+    {
+        return Subscription::active()
+            ->where('cycle', Subscription::CYCLE_YEARLY)
+            ->whereNotNull('next_due_on')
+            ->get()
+            ->filter(fn (Subscription $s) => $s->next_due_on->month === $this->month->month)
+            ->map(fn (Subscription $s) => [
+                'id' => $s->id,
+                'name' => $s->name,
+                'amount_cents' => $s->amount_cents,
+            ])->values()->all();
+    }
+
+    /** Annuels sans échéance : impossibles à placer dans un mois. */
+    private function unscheduledYearlyCount(): int
+    {
+        return Subscription::active()
+            ->where('cycle', Subscription::CYCLE_YEARLY)
+            ->whereNull('next_due_on')
+            ->count();
     }
 
     private function treasuryCents(): int
@@ -150,19 +202,22 @@ class MonthlyReport
     /** Rentrées vs sorties sur les 6 mois glissants qui finissent au mois affiché. */
     private function trend(): array
     {
-        $fixedCents = $this->fixedChargeCents();
-
-        return collect(range(5, 0))->map(function (int $back) use ($fixedCents) {
+        return collect(range(5, 0))->map(function (int $back) {
             $m = $this->month->subMonths($back);
 
             $income = (int) Income::inMonth($m->year, $m->month)->sum('amount_cents');
             $expense = (int) Expense::inMonth($m->year, $m->month)->sum('amount_cents');
 
+            // Recalculé pour CHAQUE mois : la courbe doit montrer les pics
+            // d'échéances annuelles, pas les aplatir en appliquant partout la
+            // valeur du mois affiché.
+            $subs = $this->subscriptionsDueCents($m);
+
             return [
                 'iso' => $m->format('Y-m'),
                 'label' => $m->locale('fr')->isoFormat('MMM'),
                 'income_cents' => $income,
-                'outflow_cents' => $expense + $fixedCents,
+                'outflow_cents' => $expense + $subs,
             ];
         })->all();
     }

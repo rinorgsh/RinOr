@@ -27,10 +27,13 @@ const monthLabel = computed(() => {
 const outflowHint = computed(() => {
     const parts = [];
     if (t.value.expense_cents) parts.push('dépenses saisies');
-    if (t.value.fixed_cents) parts.push('charge fixe');
+    if (t.value.fixed_cents) parts.push('abonnements dus');
 
     return parts.length ? parts.join(' + ') : 'rien ce mois-ci';
 });
+
+/** Écart entre ce qui est réellement dû ce mois et la moyenne annuelle. */
+const smoothedGap = computed(() => t.value.fixed_smoothed_cents - t.value.fixed_cents);
 
 const netHint = computed(() =>
     t.value.savings_rate === null
@@ -101,11 +104,59 @@ const openTasks = computed(() => r.value.tasks.todo + r.value.tasks.doing);
                 <p class="mt-1 text-lg leading-none">
                     <Money :cents="t.fixed_cents" tone="out" />
                 </p>
-                <!-- Ce montant est le total annuel divisé par 12, pas la somme
-                     des prélèvements du mois : il faut le dire. -->
-                <p class="mt-1 text-[10px] text-ink-3">lissés sur 12 mois</p>
+                <!-- Ce qui tombe vraiment ce mois-ci, pas une moyenne. -->
+                <p class="mt-1 text-[10px] text-ink-3">
+                    <template v-if="r.yearly_due_this_month.length">
+                        mensuels + {{ r.yearly_due_this_month.length }} annuel{{ r.yearly_due_this_month.length > 1 ? 's' : '' }}
+                    </template>
+                    <template v-else>que les mensuels ce mois-ci</template>
+                </p>
             </Link>
         </div>
+
+        <!-- Les annuels qui tombent ce mois : ils expliquent un mois plus lourd
+             que les autres, au lieu de laisser le solde plonger sans raison. -->
+        <div
+            v-if="r.yearly_due_this_month.length"
+            class="mt-3 rounded-xl border border-line bg-surface px-4 py-3"
+        >
+            <p class="text-[11px] tracking-wide text-ink-3 uppercase">
+                Échéances annuelles de {{ r.month.label }}
+            </p>
+            <ul class="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+                <li
+                    v-for="sub in r.yearly_due_this_month"
+                    :key="sub.id"
+                    class="flex items-baseline gap-1.5 text-xs"
+                >
+                    <span class="text-ink-2">{{ sub.name }}</span>
+                    <Money :cents="sub.amount_cents" tone="out" class="font-medium" />
+                </li>
+            </ul>
+        </div>
+
+        <!-- La moyenne existe toujours, mais comme repère de provision, pas
+             comme un montant prélevé. -->
+        <p
+            v-if="smoothedGap !== 0"
+            class="mt-2 px-1 text-xs text-ink-3"
+        >
+            Lissé sur l'année, tes abonnements représentent
+            <Money :cents="t.fixed_smoothed_cents" class="text-ink-2" /> par mois —
+            {{ smoothedGap > 0 ? 'ce mois-ci est donc plus léger' : 'ce mois-ci est donc plus lourd' }}
+            de <Money :cents="Math.abs(smoothedGap)" class="text-ink-2" />.
+        </p>
+
+        <p
+            v-if="r.unscheduled_yearly_count > 0"
+            class="mt-2 flex items-start gap-1.5 px-1 text-xs text-st-doing"
+        >
+            <TriangleAlert class="mt-0.5 size-3 shrink-0" />
+            {{ r.unscheduled_yearly_count }} abonnement{{ r.unscheduled_yearly_count > 1 ? 's' : '' }}
+            annuel{{ r.unscheduled_yearly_count > 1 ? 's' : '' }} sans date d'échéance :
+            impossible de {{ r.unscheduled_yearly_count > 1 ? 'les' : 'le' }} placer dans un mois,
+            {{ r.unscheduled_yearly_count > 1 ? 'ils ne sont' : 'il n\'est' }} compté{{ r.unscheduled_yearly_count > 1 ? 's' : '' }} nulle part.
+        </p>
 
         <!-- ================= Ce qu'on te doit ================= -->
         <Link
@@ -159,7 +210,7 @@ const openTasks = computed(() => r.value.tasks.todo + r.value.tasks.doing);
             <Card
                 class="lg:col-span-2"
                 title="Rentrées et sorties"
-                subtitle="Les 6 mois qui précèdent, charge fixe incluse"
+                subtitle="Les 6 mois qui précèdent, échéances réelles incluses"
             >
                 <TrendBars
                     :trend="r.trend"

@@ -46,10 +46,20 @@ totaux du mois et des créances.
 
 La confirmation de suppression annonce ce qui va se passer avant le clic.
 
-**Les abonnements ne créent pas d'écritures de dépense.** Ils sont comptés à
-part comme *charge fixe*, ramenés au mois (un annuel compte pour 1/12). Le
-total des sorties du mois = dépenses saisies + charge fixe. C'est ce qui permet
-de voir séparément ce qui est subi et ce qui est décidé.
+**Les abonnements ne créent pas d'écritures de dépense**, mais ils comptent
+dans les sorties du mois **à leur échéance réelle**, jamais lissés. Un mensuel
+tombe tous les mois ; un annuel ne compte que le mois de son anniversaire.
+
+C'est une correction importante : la version précédente divisait les annuels
+par 12, ce qui produisait un montant n'apparaissant sur aucun relevé bancaire
+et masquait les mois lourds. Chez Rinor, mars encaisse 132 € d'annuels d'un
+coup — un mois à 357 € contre 225 € les mois ordinaires.
+
+La somme des douze mois reste égale au coût annuel réel : on a cessé d'étaler,
+pas de compter. Le montant lissé est toujours exposé
+(`totals.fixed_smoothed_cents`) comme repère de provision, mais il n'entre
+jamais dans les sorties. Un annuel sans date d'échéance ne peut être placé
+nulle part : il est exclu et **signalé**, plutôt que réparti arbitrairement.
 
 ## Stack
 
@@ -293,7 +303,7 @@ en provisionne un par défaut), c'est un changement de `DB_*` et rien d'autre.
 ## Tests
 
 ```bash
-php artisan test        # 65 tests
+php artisan test        # 72 tests
 ```
 
 `IsolationTest` décrit huit manières concrètes dont les finances d'un compte
