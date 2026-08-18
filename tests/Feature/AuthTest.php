@@ -36,13 +36,6 @@ class AuthTest extends TestCase
         $this->assertDatabaseCount('expenses', 0);
     }
 
-    public function test_il_n_existe_aucune_route_d_inscription(): void
-    {
-        $this->post('/register')->assertNotFound();
-        $this->get('/register')->assertNotFound();
-        $this->get('/inscription')->assertNotFound();
-    }
-
     public function test_connexion_avec_les_bons_identifiants(): void
     {
         $user = $this->user();

@@ -1,39 +1,26 @@
 <script setup>
-import { onMounted } from 'vue';
 import { Head, Link, useForm } from '@inertiajs/vue3';
-import { LockKeyhole } from '@lucide/vue';
 import Btn from '@/Components/UI/Btn.vue';
 import Field from '@/Components/UI/Field.vue';
-import { useTheme } from '@/Composables/useTheme';
 
 const form = useForm({
+    name: '',
     email: '',
     password: '',
-    remember: true,
-});
-
-// La page de connexion s'affiche avant que le layout n'existe : on s'assure
-// que le thème est bien stampé même si le script inline a échoué.
-const { theme } = useTheme();
-
-onMounted(() => {
-    if (!document.documentElement.dataset.theme) {
-        document.documentElement.dataset.theme = theme.value;
-    }
+    password_confirmation: '',
 });
 
 function submit() {
-    form.post('/connexion', {
-        onFinish: () => form.reset('password'),
+    form.post('/inscription', {
+        onFinish: () => form.reset('password', 'password_confirmation'),
     });
 }
 </script>
 
 <template>
-    <Head title="Connexion" />
+    <Head title="Créer un compte" />
 
     <div class="relative flex min-h-dvh items-center justify-center overflow-hidden bg-page px-4 py-10">
-        <!-- Trame diagonale : de la matière, pas du bruit -->
         <div class="grain pointer-events-none absolute inset-0 opacity-30" aria-hidden="true" />
 
         <div class="relative w-full max-w-sm">
@@ -42,19 +29,28 @@ function submit() {
                     Rin<span class="text-gold">Or</span>
                 </p>
                 <p class="mt-2 text-[10px] tracking-[0.18em] text-ink-3 uppercase">
-                    Comptabilité
+                    Créer un compte
                 </p>
             </div>
 
             <form class="rounded-xl border border-line bg-surface p-6" @submit.prevent="submit">
                 <Field
-                    v-model="form.email"
-                    label="Adresse e-mail"
-                    type="email"
-                    :error="form.errors.email"
+                    v-model="form.name"
+                    label="Nom"
+                    :error="form.errors.name"
                     autofocus
                     required
                 />
+
+                <div class="mt-4">
+                    <Field
+                        v-model="form.email"
+                        label="Adresse e-mail"
+                        type="email"
+                        :error="form.errors.email"
+                        required
+                    />
+                </div>
 
                 <div class="mt-4">
                     <Field
@@ -62,18 +58,20 @@ function submit() {
                         label="Mot de passe"
                         type="password"
                         :error="form.errors.password"
+                        hint="12 caractères minimum."
                         required
                     />
                 </div>
 
-                <label class="mt-4 flex cursor-pointer items-center gap-2.5">
-                    <input
-                        v-model="form.remember"
-                        type="checkbox"
-                        class="size-4 shrink-0 accent-[var(--ink)]"
+                <div class="mt-4">
+                    <Field
+                        v-model="form.password_confirmation"
+                        label="Confirme le mot de passe"
+                        type="password"
+                        :error="form.errors.password_confirmation"
+                        required
                     />
-                    <span class="text-sm text-ink-2">Rester connecté</span>
-                </label>
+                </div>
 
                 <Btn
                     variant="solid"
@@ -83,22 +81,20 @@ function submit() {
                     class="mt-6"
                     :disabled="form.processing"
                 >
-                    {{ form.processing ? 'Connexion…' : 'Se connecter' }}
+                    {{ form.processing ? 'Création…' : 'Créer mon compte' }}
                 </Btn>
             </form>
 
             <p class="mt-5 text-center text-sm text-ink-3">
-                Pas encore de compte ?
-                <Link href="/inscription" class="text-ink underline underline-offset-2">
-                    En créer un
+                Déjà un compte ?
+                <Link href="/connexion" class="text-ink underline underline-offset-2">
+                    Se connecter
                 </Link>
             </p>
 
-            <p class="mt-4 flex items-start gap-2 text-xs text-ink-3">
-                <LockKeyhole class="mt-0.5 size-3.5 shrink-0" />
-                <span>
-                    Chaque compte ne voit que ses propres données.
-                </span>
+            <p class="mt-4 text-center text-xs text-ink-3">
+                Ton compte est actif immédiatement. Tes données ne sont visibles
+                que par toi.
             </p>
         </div>
     </div>

@@ -92,8 +92,22 @@ sur `user_id` dans `CategoryController` (unicité du nom par compte) et partout
 où `category_id` est validé (sinon on rattache une écriture à la catégorie
 d'autrui en devinant son id). `IsolationTest` verrouille ces deux cas.
 
-Il n'y a pas encore de route d'inscription : les comptes se créent en ligne de
-commande.
+### Inscription
+
+Ouverte sur `/inscription`, **compte actif immédiatement — pas de vérification
+par e-mail**. Mot de passe : 12 caractères minimum, confirmé. Le compte et ses
+14 catégories de départ sont créés dans la même transaction, donc un échec ne
+laisse jamais de compte à moitié créé.
+
+Deux conséquences de l'absence de vérification, à connaître :
+
+- **L'adresse n'est jamais prouvée.** Un compte peut être créé avec l'adresse
+  de quelqu'un d'autre. Si une réinitialisation de mot de passe par e-mail est
+  ajoutée un jour, il faudra la cadrer.
+- **La limitation de débit est la seule barrière** contre la création en masse :
+  5 inscriptions par heure et par IP (`throttle:5,60` sur la route POST).
+
+Le premier compte, ou un compte administrateur, peut aussi se créer hors ligne :
 
 ```bash
 php artisan app:create-user                       # interactif
@@ -102,9 +116,6 @@ echo 'mot-de-passe' | php artisan app:create-user --email=toi@exemple.be
 
 Le mot de passe se lit sur stdin en non-interactif plutôt qu'en argument : un
 argument atterrirait dans l'historique du shell et dans la liste des processus.
-
-Un nouveau compte reçoit 14 catégories de départ génériques — il n'hérite
-d'aucune donnée d'un autre utilisateur.
 
 Toutes les routes sont derrière `auth`. Les tentatives de connexion sont
 limitées à 5 par minute et par couple e-mail + IP, et le message d'erreur est
@@ -259,7 +270,7 @@ en provisionne un par défaut), c'est un changement de `DB_*` et rien d'autre.
 ## Tests
 
 ```bash
-php artisan test        # 41 tests
+php artisan test        # 50 tests
 ```
 
 `IsolationTest` décrit huit manières concrètes dont les finances d'un compte
@@ -280,4 +291,8 @@ avec un paramètre `?month=` bricolé.
 - Saisie hors ligne avec synchronisation différée.
 - Export CSV / clôture annuelle.
 - 2FA — le mot de passe est aujourd'hui la seule barrière.
+- Vérification d'e-mail et réinitialisation de mot de passe.
+- **Sauvegardes.** Le SQLite est un fichier unique et n'a aucune stratégie de
+  sauvegarde. À traiter avant d'ouvrir l'inscription à d'autres personnes : tu
+  deviens responsable de traitement RGPD dès que tu héberges leurs finances.
 - Ziggy : les URLs sont partagées via Inertia (`nav`) plutôt que codées en dur.

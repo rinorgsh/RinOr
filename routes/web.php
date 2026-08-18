@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
@@ -12,15 +13,20 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
-| Connexion
+| Connexion et inscription
 |--------------------------------------------------------------------------
-| Aucune route d'inscription : le compte se crée avec
-| `php artisan app:create-user`.
+| L'inscription est ouverte et le compte est actif immédiatement : pas de
+| vérification par e-mail. La limitation de débit est donc la seule barrière
+| contre la création de comptes en masse — 5 par heure et par IP.
 */
 
 Route::middleware('guest')->group(function () {
     Route::get('/connexion', [LoginController::class, 'create'])->name('login');
     Route::post('/connexion', [LoginController::class, 'store']);
+
+    Route::get('/inscription', [RegisterController::class, 'create'])->name('register');
+    Route::post('/inscription', [RegisterController::class, 'store'])
+        ->middleware('throttle:5,60');
 });
 
 Route::post('/deconnexion', [LoginController::class, 'destroy'])
