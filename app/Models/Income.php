@@ -19,6 +19,28 @@ class Income extends Model
         return ['received_on' => 'date:Y-m-d'];
     }
 
+    protected static function booted(): void
+    {
+        static::deleted(function (Income $income) {
+            if ($income->invoice_id === null) {
+                return;
+            }
+
+            // Supprimer l'encaissement rouvre la facture. Elle n'est pas
+            // supprimée : le client te doit toujours cet argent, seul le
+            // paiement est annulé. Sans ça la facture resterait « payée » sans
+            // aucune rentrée derrière — invisible dans les totaux comme dans
+            // les créances.
+            Invoice::withoutGlobalScope('owner')
+                ->whereKey($income->invoice_id)
+                ->update([
+                    'status' => Invoice::SENT,
+                    'paid_on' => null,
+                    'updated_at' => now(),
+                ]);
+        });
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);

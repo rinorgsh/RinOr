@@ -24,11 +24,27 @@ flottants : additionner des `float` sur de l'argent finit toujours par produire
 un écart d'un centime. Le trait `App\Concerns\HasAmount` expose un attribut
 `amount` en euros pour les formulaires et l'affichage.
 
-**Une facture encaissée crée sa rentrée.** Marquer « payée » génère
-automatiquement l'écriture correspondante (montant TTC), reliée par
-`incomes.invoice_id`. Rouvrir la facture la retire. Sans ce lien il faudrait
-ressaisir le montant dans Rentrées, et cette double saisie est exactement ce
-qu'on finit par ne plus faire.
+**Une facture encaissée crée sa rentrée**, et les deux restent cohérentes dans
+les quatre sens. Marquer « payée » génère l'écriture correspondante (montant
+TTC), reliée par `incomes.invoice_id`. Sans ce lien il faudrait ressaisir le
+montant dans Rentrées, et cette double saisie est exactement ce qu'on finit par
+ne plus faire.
+
+| Action | Effet |
+| --- | --- |
+| Encaisser la facture | crée la rentrée (TTC) |
+| Rouvrir la facture | retire la rentrée |
+| Supprimer la facture | retire la rentrée aussi |
+| **Supprimer la rentrée** | **rouvre la facture — elle n'est pas supprimée** |
+
+Le dernier cas est le plus important : supprimer un encaissement veut dire « ce
+paiement n'a pas eu lieu », pas « cette facture n'a jamais existé ». Le client te
+doit toujours l'argent, donc la facture repasse en « à encaisser » et le montant
+redevient visible dans les créances. Avant correction, elle restait marquée
+« payée » sans aucune rentrée derrière : l'argent disparaissait à la fois des
+totaux du mois et des créances.
+
+La confirmation de suppression annonce ce qui va se passer avant le clic.
 
 **Les abonnements ne créent pas d'écritures de dépense.** Ils sont comptés à
 part comme *charge fixe*, ramenés au mois (un annuel compte pour 1/12). Le
@@ -277,7 +293,7 @@ en provisionne un par défaut), c'est un changement de `DB_*` et rien d'autre.
 ## Tests
 
 ```bash
-php artisan test        # 59 tests
+php artisan test        # 65 tests
 ```
 
 `IsolationTest` décrit huit manières concrètes dont les finances d'un compte

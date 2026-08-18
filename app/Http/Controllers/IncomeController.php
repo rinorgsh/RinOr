@@ -17,7 +17,7 @@ class IncomeController extends Controller
     {
         $cursor = MonthCursor::fromRequest($request);
 
-        $entries = Income::with('category')
+        $entries = Income::with(['category', 'invoice:id,client,label,number'])
             ->whereYear('received_on', $cursor->year())
             ->whereMonth('received_on', $cursor->month())
             ->orderByDesc('received_on')
@@ -31,6 +31,13 @@ class IncomeController extends Controller
                 'amount_cents' => $i->amount_cents,
                 'received_on' => $i->received_on->format('Y-m-d'),
                 'notes' => $i->notes,
+                // Renseignée si la rentrée vient d'un encaissement : la
+                // supprimer rouvrira la facture, il faut le dire avant.
+                'invoice' => $i->invoice ? [
+                    'id' => $i->invoice->id,
+                    'client' => $i->invoice->client,
+                    'label' => $i->invoice->label,
+                ] : null,
                 'category' => $i->category
                     ? ['id' => $i->category->id, 'name' => $i->category->name, 'color' => $i->category->color]
                     : null,

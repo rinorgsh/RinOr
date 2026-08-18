@@ -90,10 +90,9 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice): RedirectResponse
     {
-        // La rentrée liée part avec (nullOnDelete la détacherait sinon en
-        // laissant une rentrée orpheline qui gonflerait les totaux).
-        $invoice->income?->delete();
-        $invoice->delete();
+        // La rentrée liée part avec : une rentrée orpheline gonflerait les
+        // totaux du mois.
+        $invoice->deleteWithIncome();
 
         return back()->with('flash', 'Facture supprimée.');
     }

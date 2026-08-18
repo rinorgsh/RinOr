@@ -187,6 +187,9 @@ function submit() {
                                     <span class="min-w-0 flex-1">
                                         <span class="block truncate text-sm text-ink">{{ entry.name }}</span>
                                         <span class="block truncate text-xs text-ink-3">
+                                            <template v-if="entry.invoice">
+                                                Facture {{ entry.invoice.client }} ·
+                                            </template>
                                             {{ entry.category?.name ?? 'Sans catégorie' }}
                                             <template v-if="entry.notes"> · {{ entry.notes }}</template>
                                         </span>
@@ -201,6 +204,11 @@ function submit() {
                                 <ConfirmDelete
                                     :url="`${basePath}/${entry.id}`"
                                     :label="entry.name"
+                                    :consequence="
+                                        entry.invoice
+                                            ? `La facture ${entry.invoice.client} — ${entry.invoice.label} repassera en « à encaisser ». Elle n'est pas supprimée : le client te doit toujours cet argent.`
+                                            : null
+                                    "
                                 />
                             </li>
                         </ul>

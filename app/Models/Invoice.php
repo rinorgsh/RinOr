@@ -108,8 +108,27 @@ class Invoice extends Model
     public function markUnpaid(): void
     {
         DB::transaction(function () {
-            $this->income?->delete();
+            // `withoutEvents` : c'est nous qui remettons la facture à « envoyée »
+            // juste après. Sans ça, l'observateur de Income le ferait aussi, en
+            // double.
+            Model::withoutEvents(fn () => $this->income?->delete());
+
             $this->update(['status' => self::SENT, 'paid_on' => null]);
+        });
+    }
+
+    /**
+     * Supprime la facture et l'encaissement qu'elle avait généré.
+     *
+     * L'ordre et le `withoutEvents` comptent : sans eux, supprimer la rentrée
+     * déclencherait la réouverture d'une facture qu'on est en train d'effacer.
+     */
+    public function deleteWithIncome(): void
+    {
+        DB::transaction(function () {
+            Model::withoutEvents(fn () => $this->income?->delete());
+
+            $this->delete();
         });
     }
 }
