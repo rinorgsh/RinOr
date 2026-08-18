@@ -12,7 +12,7 @@ Mini app web de comptabilité personnelle. Le nom est le prénom : **Rin** + **o
 | **Dépenses** | Journal daté, une ligne par achat, groupé par jour |
 | **Rentrées** | Journal daté de tout ce qui entre |
 | **Factures** | Ce qu'on te doit : statut, échéance, retard. Encaisser crée la rentrée |
-| **Abonnements** | Ce qui se prélève seul, mensuel ou annuel, avec la charge fixe mensualisée |
+| **Abonnements** | Ce qui se prélève seul, mensuel ou annuel, avec les trois chiffres séparés |
 | **Caisses** | Argent mis de côté : on y met en disant d'où ça vient, on en sort en disant pourquoi |
 | **À faire** | Tâches avec statut (à faire → en cours → terminé) et priorité |
 | **Catégories** | Pour répondre à « dans quoi part mon argent » et « d'où il vient » |
@@ -60,6 +60,21 @@ pas de compter. Le montant lissé est toujours exposé
 (`totals.fixed_smoothed_cents`) comme repère de provision, mais il n'entre
 jamais dans les sorties. Un annuel sans date d'échéance ne peut être placé
 nulle part : il est exclu et **signalé**, plutôt que réparti arbitrairement.
+
+**`next_due_on` est une ancre, pas une valeur vivante.** Rien ne la fait
+avancer en base : la prochaine échéance est recalculée à la lecture
+(`Subscription::nextDueDate()`). Sans ça, tout serait « en retard » le mois
+suivant et n'en ressortirait jamais — vingt dates à corriger à la main chaque
+mois. Calculer plutôt que planifier une tâche : aucun cron sur le serveur, et
+le résultat reste juste même après six mois d'arrêt. Le mois anniversaire d'un
+annuel (`dueMonth()`) est invariant, c'est lui qui décide dans quel mois
+l'abonnement pèse.
+
+**Saisie rapide.** `App\Support\EntrySuggestions` renvoie les libellés déjà
+saisis avec leur dernier montant et leur dernière catégorie, classés par
+fréquence. Saisir un libellé connu pré-remplit le reste — sans jamais écraser
+un champ déjà rempli à la main. Chaque ligne a aussi un bouton « refaire la
+même », qui rouvre le formulaire pré-rempli et daté d'aujourd'hui.
 
 ## Stack
 
@@ -303,7 +318,7 @@ en provisionne un par défaut), c'est un changement de `DB_*` et rien d'autre.
 ## Tests
 
 ```bash
-php artisan test        # 72 tests
+php artisan test        # 87 tests
 ```
 
 `IsolationTest` décrit huit manières concrètes dont les finances d'un compte
@@ -321,6 +336,8 @@ avec un paramètre `?month=` bricolé.
 ## Pas encore branché
 
 - Rentrées récurrentes (un salaire se ressaisit chaque mois à la main).
+- **Sauvegardes.** Toujours rien. C'est la dette la plus urgente maintenant que
+  l'inscription est ouverte.
 - Entité « client » et marge par client — aujourd'hui le client est un simple
   libellé sur la facture, avec autocomplétion.
 - TVA trimestrielle : le montant collecté est affiché, mais rien ne calcule

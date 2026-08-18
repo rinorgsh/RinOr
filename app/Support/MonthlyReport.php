@@ -106,7 +106,7 @@ class MonthlyReport
                 return $s->amount_cents;
             }
 
-            return $s->next_due_on?->month === $month->month ? $s->amount_cents : 0;
+            return $s->dueMonth() === $month->month ? $s->amount_cents : 0;
         });
     }
 
@@ -123,7 +123,7 @@ class MonthlyReport
             ->where('cycle', Subscription::CYCLE_YEARLY)
             ->whereNotNull('next_due_on')
             ->get()
-            ->filter(fn (Subscription $s) => $s->next_due_on->month === $this->month->month)
+            ->filter(fn (Subscription $s) => $s->dueMonth() === $this->month->month)
             ->map(fn (Subscription $s) => [
                 'id' => $s->id,
                 'name' => $s->name,
@@ -274,18 +274,23 @@ class MonthlyReport
     {
         $today = CarbonImmutable::now()->startOfDay();
 
+        // Le tri se fait sur la date recalculée, pas sur l'ancre : une ancre
+        // dépassée remonterait en tête de liste alors que l'échéance réelle est
+        // dans onze mois.
         return Subscription::active()
             ->whereNotNull('next_due_on')
-            ->orderBy('next_due_on')
-            ->limit(5)
             ->get()
             ->map(fn (Subscription $s) => [
                 'id' => $s->id,
                 'name' => $s->name,
                 'amount_cents' => $s->amount_cents,
                 'cycle' => $s->cycle,
-                'next_due_on' => $s->next_due_on->format('Y-m-d'),
-                'days_left' => $today->diffInDays($s->next_due_on->toImmutable()->startOfDay(), false),
-            ])->all();
+                'next_due_on' => $s->nextDueDate()->format('Y-m-d'),
+                'days_left' => (int) $today->diffInDays($s->nextDueDate(), false),
+            ])
+            ->sortBy('next_due_on')
+            ->take(5)
+            ->values()
+            ->all();
     }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Expense;
+use App\Support\EntrySuggestions;
 use App\Support\MonthCursor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -37,6 +38,9 @@ class ExpenseController extends Controller
             ])->values(),
             'categories' => Category::expense()->orderBy('name')->get(['id', 'name', 'color']),
             'month' => $cursor->toArray(),
+            // Historique des libellés : alimente l'autocomplétion et le
+            // pré-remplissage du montant.
+            'suggestions' => EntrySuggestions::for('expenses', 'spent_on', $request->user()->id),
             'total_cents' => (int) $entries->sum('amount_cents'),
         ]);
     }

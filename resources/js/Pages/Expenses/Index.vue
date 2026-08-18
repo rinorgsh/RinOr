@@ -6,6 +6,7 @@ const props = defineProps({
     categories: { type: Array, required: true },
     month: { type: Object, required: true },
     total_cents: { type: Number, required: true },
+    suggestions: { type: Array, default: () => [] },
 });
 
 const labels = {
@@ -33,6 +34,7 @@ const labels = {
         date-key="spent_on"
         tone="out"
         series-color="var(--series-out)"
+        :suggestions="props.suggestions"
         :labels="labels"
     />
 </template>

@@ -32,7 +32,8 @@ class SubscriptionController extends Controller
                 'cycle' => $s->cycle,
                 'monthly_cents' => $s->monthly_cents,
                 'yearly_cents' => $s->yearly_cents,
-                'next_due_on' => $s->next_due_on?->format('Y-m-d'),
+                // Recalculée : l'ancre en base peut être depuis longtemps dépassée.
+                'next_due_on' => $s->nextDueDate()?->format('Y-m-d'),
                 'is_active' => $s->is_active,
                 'notes' => $s->notes,
                 'category' => $s->category ? [

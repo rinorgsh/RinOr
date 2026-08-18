@@ -1,7 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue';
 import { useForm } from '@inertiajs/vue3';
-import { Plus } from '@lucide/vue';
+import { CopyPlus, Plus } from '@lucide/vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Btn from '@/Components/UI/Btn.vue';
 import Card from '@/Components/UI/Card.vue';
@@ -34,6 +34,8 @@ const props = defineProps({
     tone: { type: String, required: true },
     seriesColor: { type: String, required: true },
     labels: { type: Object, required: true },
+    /** Libellés déjà saisis, avec dernier montant et catégorie. */
+    suggestions: { type: Array, default: () => [] },
 });
 
 const open = ref(false);
@@ -57,6 +59,24 @@ form.transform((data) => ({
 const categoryOptions = computed(() =>
     props.categories.map((c) => ({ value: c.id, label: c.name })),
 );
+
+const suggestionNames = computed(() => props.suggestions.map((s) => s.name));
+
+/**
+ * Dès qu'un libellé connu est saisi en entier, on propose le montant et la
+ * catégorie de la dernière fois. On n'écrase que les champs encore vides :
+ * une correction manuelle ne doit jamais être annulée par l'autocomplétion.
+ */
+function applySuggestion(name) {
+    const match = props.suggestions.find(
+        (s) => s.name.toLowerCase() === String(name).trim().toLowerCase(),
+    );
+
+    if (!match) return;
+
+    if (form.amount === '') form.amount = centsToInput(match.amount_cents);
+    if (form.category_id === '' && match.category_id) form.category_id = match.category_id;
+}
 
 /** Regroupé par jour : on lit un mois comme une suite de journées. */
 const days = computed(() => {
@@ -100,6 +120,22 @@ function openCreate() {
     form.reset();
     form.clearErrors();
     form[props.dateKey] = props.month.today;
+    open.value = true;
+}
+
+/**
+ * « Refaire la même » : rouvre le formulaire pré-rempli, mais daté
+ * d'aujourd'hui et en création. Deux gestes pour une dépense récurrente au
+ * lieu de quatre champs à retaper.
+ */
+function duplicate(entry) {
+    editing.value = null;
+    form.clearErrors();
+    form.name = entry.name;
+    form.amount = centsToInput(entry.amount_cents);
+    form.category_id = entry.category?.id ?? '';
+    form[props.dateKey] = props.month.today;
+    form.notes = entry.notes ?? '';
     open.value = true;
 }
 
@@ -201,6 +237,16 @@ function submit() {
                                     />
                                 </button>
 
+                                <button
+                                    type="button"
+                                    class="rounded-lg p-2 text-ink-3 transition hover:bg-surface-2 hover:text-ink"
+                                    :aria-label="`Refaire la même : ${entry.name}`"
+                                    title="Refaire la même, datée d'aujourd'hui"
+                                    @click="duplicate(entry)"
+                                >
+                                    <CopyPlus class="size-4" />
+                                </button>
+
                                 <ConfirmDelete
                                     :url="`${basePath}/${entry.id}`"
                                     :label="entry.name"
@@ -257,8 +303,10 @@ function submit() {
                     v-model="form.name"
                     :label="labels.nameLabel"
                     :placeholder="labels.namePlaceholder"
+                    :suggestions="suggestionNames"
                     :error="form.errors.name"
                     required
+                    @update:model-value="applySuggestion"
                 />
 
                 <div class="grid grid-cols-2 gap-3">

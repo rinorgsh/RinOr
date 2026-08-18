@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Category;
 use App\Models\Income;
+use App\Support\EntrySuggestions;
 use App\Support\MonthCursor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,6 +45,9 @@ class IncomeController extends Controller
             ])->values(),
             'categories' => Category::income()->orderBy('name')->get(['id', 'name', 'color']),
             'month' => $cursor->toArray(),
+            // Historique des libellés : alimente l'autocomplétion et le
+            // pré-remplissage du montant.
+            'suggestions' => EntrySuggestions::for('incomes', 'received_on', $request->user()->id),
             'total_cents' => (int) $entries->sum('amount_cents'),
         ]);
     }
