@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Expense;
 use App\Models\Income;
+use App\Models\Invoice;
 use App\Models\Subscription;
 use App\Models\Task;
 use App\Models\Treasury;
@@ -65,6 +66,7 @@ class MonthlyReport
             'top_income_sources' => $this->topEntries(Income::class, 'received_on'),
             'top_expenses' => $this->topEntries(Expense::class, 'spent_on'),
             'trend' => $this->trend(),
+            'receivables' => $this->receivables(),
             'tasks' => $this->taskSummary(),
             'upcoming_subscriptions' => $this->upcomingSubscriptions(),
         ];
@@ -163,6 +165,30 @@ class MonthlyReport
                 'outflow_cents' => $expense + $fixedCents,
             ];
         })->all();
+    }
+
+    /**
+     * L'argent facturé mais pas encore reçu. Il n'apparaît dans aucun total du
+     * mois — c'est justement le point : une facture impayée est invisible tant
+     * qu'on ne la regarde pas en face.
+     */
+    private function receivables(): array
+    {
+        $open = Invoice::outstanding()->get();
+        $overdue = $open->filter(fn (Invoice $i) => $i->is_overdue);
+
+        return [
+            'outstanding_cents' => $open->sum(fn (Invoice $i) => $i->total_cents),
+            'outstanding_count' => $open->count(),
+            'overdue_cents' => $overdue->sum(fn (Invoice $i) => $i->total_cents),
+            'overdue_count' => $overdue->count(),
+            'worst' => $overdue->sortByDesc('days_late')->take(3)->map(fn (Invoice $i) => [
+                'id' => $i->id,
+                'client' => $i->client,
+                'total_cents' => $i->total_cents,
+                'days_late' => $i->days_late,
+            ])->values()->all(),
+        ];
     }
 
     private function taskSummary(): array

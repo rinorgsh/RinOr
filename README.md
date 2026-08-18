@@ -11,6 +11,7 @@ Mini app web de comptabilité personnelle. Le nom est le prénom : **Rin** + **o
 | **Tableau** | Rentrées et sorties du mois, tendance 6 mois, où part l'argent, ce qui rapporte le plus, prochains prélèvements, tâches en attente |
 | **Dépenses** | Journal daté, une ligne par achat, groupé par jour |
 | **Rentrées** | Journal daté de tout ce qui entre |
+| **Factures** | Ce qu'on te doit : statut, échéance, retard. Encaisser crée la rentrée |
 | **Abonnements** | Ce qui se prélève seul, mensuel ou annuel, avec la charge fixe mensualisée |
 | **Caisses** | Argent mis de côté : on y met en disant d'où ça vient, on en sort en disant pourquoi |
 | **À faire** | Tâches avec statut (à faire → en cours → terminé) et priorité |
@@ -22,6 +23,12 @@ Mini app web de comptabilité personnelle. Le nom est le prénom : **Rin** + **o
 flottants : additionner des `float` sur de l'argent finit toujours par produire
 un écart d'un centime. Le trait `App\Concerns\HasAmount` expose un attribut
 `amount` en euros pour les formulaires et l'affichage.
+
+**Une facture encaissée crée sa rentrée.** Marquer « payée » génère
+automatiquement l'écriture correspondante (montant TTC), reliée par
+`incomes.invoice_id`. Rouvrir la facture la retire. Sans ce lien il faudrait
+ressaisir le montant dans Rentrées, et cette double saisie est exactement ce
+qu'on finit par ne plus faire.
 
 **Les abonnements ne créent pas d'écritures de dépense.** Ils sont comptés à
 part comme *charge fixe*, ramenés au mois (un annuel compte pour 1/12). Le
@@ -270,7 +277,7 @@ en provisionne un par défaut), c'est un changement de `DB_*` et rien d'autre.
 ## Tests
 
 ```bash
-php artisan test        # 50 tests
+php artisan test        # 59 tests
 ```
 
 `IsolationTest` décrit huit manières concrètes dont les finances d'un compte
@@ -288,6 +295,10 @@ avec un paramètre `?month=` bricolé.
 ## Pas encore branché
 
 - Rentrées récurrentes (un salaire se ressaisit chaque mois à la main).
+- Entité « client » et marge par client — aujourd'hui le client est un simple
+  libellé sur la facture, avec autocomplétion.
+- TVA trimestrielle : le montant collecté est affiché, mais rien ne calcule
+  encore ce qu'il faut provisionner avant chaque échéance.
 - Saisie hors ligne avec synchronisation différée.
 - Export CSV / clôture annuelle.
 - 2FA — le mot de passe est aujourd'hui la seule barrière.

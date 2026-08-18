@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { ArrowRight, Circle, CircleDot, ListTodo, Repeat, TriangleAlert } from '@lucide/vue';
+import { ArrowRight, Circle, CircleDot, FileText, ListTodo, Repeat, TriangleAlert } from '@lucide/vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import Card from '@/Components/UI/Card.vue';
 import Money from '@/Components/UI/Money.vue';
@@ -106,6 +106,53 @@ const openTasks = computed(() => r.value.tasks.todo + r.value.tasks.doing);
                 <p class="mt-1 text-[10px] text-ink-3">lissés sur 12 mois</p>
             </Link>
         </div>
+
+        <!-- ================= Ce qu'on te doit ================= -->
+        <Link
+            v-if="r.receivables.outstanding_count > 0"
+            href="/factures"
+            class="mt-3 block rounded-xl border bg-surface px-4 py-3.5 transition"
+            :class="
+                r.receivables.overdue_count > 0
+                    ? 'border-neg/40 hover:border-neg/70'
+                    : 'border-line hover:border-line-strong'
+            "
+        >
+            <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+                <div class="flex items-center gap-2.5">
+                    <FileText class="size-4 shrink-0 text-ink-3" />
+                    <div>
+                        <p class="text-sm text-ink">
+                            On te doit
+                            <Money :cents="r.receivables.outstanding_cents" class="font-medium" />
+                        </p>
+                        <p class="text-xs text-ink-3">
+                            {{ r.receivables.outstanding_count }} facture{{ r.receivables.outstanding_count > 1 ? 's' : '' }}
+                            ouverte{{ r.receivables.outstanding_count > 1 ? 's' : '' }}
+                            <template v-if="r.receivables.overdue_count">
+                                — dont {{ r.receivables.overdue_count }} en retard
+                            </template>
+                        </p>
+                    </div>
+                </div>
+
+                <div
+                    v-if="r.receivables.overdue_count"
+                    class="flex flex-wrap items-center gap-2"
+                >
+                    <span
+                        v-for="w in r.receivables.worst"
+                        :key="w.id"
+                        class="flex items-center gap-1.5 rounded-lg bg-neg-soft px-2 py-1 text-xs text-neg"
+                    >
+                        <TriangleAlert class="size-3 shrink-0" />
+                        {{ w.client }}
+                        <Money :cents="w.total_cents" class="font-medium" />
+                        <span class="tnum opacity-70">{{ w.days_late }} j</span>
+                    </span>
+                </div>
+            </div>
+        </Link>
 
         <!-- ================= Tendance + échéances ================= -->
         <div class="mt-4 grid gap-4 lg:grid-cols-3">

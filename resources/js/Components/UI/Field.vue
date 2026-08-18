@@ -20,11 +20,18 @@ const props = defineProps({
     options: { type: Array, default: () => [] },
     /** Libellé de l'option vide d'un select ; null = pas d'option vide. */
     emptyOption: { type: String, default: null },
+    /**
+     * Valeurs proposées en autocomplétion (input texte uniquement). Le
+     * navigateur les suggère sans imposer le choix : on peut toujours saisir
+     * autre chose. Sert surtout à ne pas créer deux orthographes du même nom.
+     */
+    suggestions: { type: Array, default: null },
 });
 
 const emit = defineEmits(['update:modelValue']);
 
 const id = `f-${useId()}`;
+const listId = `${id}-list`;
 const describedBy = computed(() => {
     const ids = [];
     if (props.error) ids.push(`${id}-err`);
@@ -135,19 +142,25 @@ function onInput(event) {
             />
         </div>
 
-        <input
-            v-else
-            :id="id"
-            :value="modelValue"
-            :type="type"
-            :placeholder="placeholder"
-            :aria-invalid="error ? 'true' : undefined"
-            :aria-describedby="describedBy"
-            :autofocus="autofocus"
-            class="h-11"
-            :class="[control, controlState, type === 'date' ? 'tnum' : '']"
-            @input="onInput"
-        />
+        <template v-else>
+            <input
+                :id="id"
+                :value="modelValue"
+                :type="type"
+                :placeholder="placeholder"
+                :aria-invalid="error ? 'true' : undefined"
+                :aria-describedby="describedBy"
+                :autofocus="autofocus"
+                :list="suggestions?.length ? listId : undefined"
+                :autocomplete="suggestions?.length ? 'off' : undefined"
+                class="h-11"
+                :class="[control, controlState, type === 'date' ? 'tnum' : '']"
+                @input="onInput"
+            />
+            <datalist v-if="suggestions?.length" :id="listId">
+                <option v-for="value in suggestions" :key="value" :value="value" />
+            </datalist>
+        </template>
 
         <p v-if="error" :id="`${id}-err`" class="mt-1.5 text-xs text-neg">{{ error }}</p>
         <p v-else-if="hint" :id="`${id}-hint`" class="mt-1.5 text-xs text-ink-3">{{ hint }}</p>

@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                 'dashboard' => route('dashboard'),
                 'subscriptions' => route('subscriptions.index'),
                 'incomes' => route('incomes.index'),
+                'invoices' => route('invoices.index'),
                 'expenses' => route('expenses.index'),
                 'treasuries' => route('treasuries.index'),
                 'tasks' => route('tasks.index'),

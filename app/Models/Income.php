@@ -12,7 +12,7 @@ class Income extends Model
 {
     use BelongsToUser, HasAmount;
 
-    protected $fillable = ['user_id', 'name', 'amount', 'amount_cents', 'category_id', 'received_on', 'notes'];
+    protected $fillable = ['user_id', 'name', 'amount', 'amount_cents', 'category_id', 'invoice_id', 'received_on', 'notes'];
 
     protected function casts(): array
     {
@@ -22,6 +22,12 @@ class Income extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /** Renseignée si la rentrée vient de l'encaissement d'une facture. */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
     }
 
     public function scopeInMonth(Builder $query, int $year, int $month): Builder

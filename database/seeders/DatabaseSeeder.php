@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Category;
 use App\Models\Income;
+use App\Models\Invoice;
 use App\Models\Subscription;
 use App\Models\Task;
 use App\Models\Treasury;
@@ -47,6 +48,7 @@ class DatabaseSeeder extends Seeder
 
         $this->subscriptions($expense);
         $this->incomes($income);
+        $this->invoices();
         $this->treasuries();
         $this->tasks();
     }
@@ -165,6 +167,36 @@ class DatabaseSeeder extends Seeder
             Income::firstOrCreate(
                 ['user_id' => $this->userId, 'name' => $name, 'received_on' => $date],
                 ['amount' => $amount, 'category_id' => $cat[$category] ?? null],
+            );
+        }
+    }
+
+    /**
+     * Les factures déjà connues. DuoGroep est l'angle mort d'origine : 1 815 €
+     * envoyés, jamais encaissés, qui n'existaient nulle part dans l'app.
+     */
+    private function invoices(): void
+    {
+        $rows = [
+            // [numéro, client, prestation, HT, TVA, statut, émise, échéance, payée]
+            ['2026-003', 'DuoGroep', 'Création site web', 1500.00, 21, Invoice::SENT, '2026-03-01', '2026-03-31', null],
+            ['2026-001', 'SVS RENOV', 'Création site web', 1500.00, 21, Invoice::PAID, '2026-01-01', '2026-01-31', '2026-01-10'],
+            ['2026-002', 'ElectroCare', 'Création site web', 400.00, 21, Invoice::PAID, '2026-01-01', '2026-01-31', '2026-01-15'],
+        ];
+
+        foreach ($rows as [$number, $client, $label, $amount, $vat, $status, $issued, $due, $paid]) {
+            Invoice::firstOrCreate(
+                ['user_id' => $this->userId, 'number' => $number],
+                [
+                    'client' => $client,
+                    'label' => $label,
+                    'amount' => $amount,
+                    'vat_rate' => $vat,
+                    'status' => $status,
+                    'issued_on' => $issued,
+                    'due_on' => $due,
+                    'paid_on' => $paid,
+                ],
             );
         }
     }

@@ -6,6 +6,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\IncomeController;
+use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\SubscriptionController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TreasuryController;
@@ -66,6 +67,17 @@ Route::middleware('auth')->group(function () {
             Route::post('/', 'store')->name('store');
             Route::put('/{expense}', 'update')->name('update');
             Route::delete('/{expense}', 'destroy')->name('destroy');
+        });
+
+    Route::controller(InvoiceController::class)
+        ->prefix('factures')->name('invoices.')->group(function () {
+            Route::get('/', 'index')->name('index');
+            Route::post('/', 'store')->name('store');
+            Route::put('/{invoice}', 'update')->name('update');
+            Route::delete('/{invoice}', 'destroy')->name('destroy');
+
+            Route::post('/{invoice}/encaisser', 'pay')->name('pay');
+            Route::post('/{invoice}/rouvrir', 'unpay')->name('unpay');
         });
 
     Route::controller(TreasuryController::class)

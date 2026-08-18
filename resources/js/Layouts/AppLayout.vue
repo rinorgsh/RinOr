@@ -4,6 +4,7 @@ import { Link, router, usePage } from '@inertiajs/vue3';
 import {
     Banknote,
     LayoutDashboard,
+    FileText,
     ListTodo,
     LogOut,
     Menu,
@@ -43,6 +44,7 @@ const primary = computed(() => [
 ]);
 
 const secondary = computed(() => [
+    { key: 'invoices', label: 'Factures', href: nav.value.invoices, icon: FileText },
     { key: 'treasuries', label: 'Caisses', href: nav.value.treasuries, icon: PiggyBank },
     { key: 'tasks', label: 'À faire', href: nav.value.tasks, icon: ListTodo },
     { key: 'categories', label: 'Catégories', href: nav.value.categories, icon: Tags },
