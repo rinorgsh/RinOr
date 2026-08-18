@@ -7,6 +7,7 @@ use App\Models\Income;
 use App\Models\Subscription;
 use App\Models\Task;
 use App\Models\Treasury;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 
 /**
@@ -20,8 +21,27 @@ use Illuminate\Database\Seeder;
  */
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * Toutes les données appartiennent à un utilisateur. Sans compte existant,
+     * il n'y a rien à semer : ces données sont celles de Rinor, pas un jeu
+     * générique qu'un nouvel inscrit devrait hériter.
+     */
+    private int $userId;
+
     public function run(): void
     {
+        $user = User::orderBy('id')->first();
+
+        if (! $user) {
+            $this->command?->warn(
+                'Aucun compte : rien à semer. Crée-le avec `php artisan app:create-user`, puis relance.'
+            );
+
+            return;
+        }
+
+        $this->userId = $user->id;
+
         $expense = $this->expenseCategories();
         $income = $this->incomeCategories();
 
@@ -72,7 +92,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($rows as [$name, $color]) {
             $map[$name] = Category::firstOrCreate(
-                ['name' => $name, 'type' => $type],
+                ['user_id' => $this->userId, 'name' => $name, 'type' => $type],
                 ['color' => $color],
             )->id;
         }
@@ -116,7 +136,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($rows as [$name, $amount, $cycle, $category, $due, $notes]) {
             Subscription::firstOrCreate(
-                ['name' => $name],
+                ['user_id' => $this->userId, 'name' => $name],
                 [
                     'amount' => $amount,
                     'cycle' => $cycle,
@@ -143,7 +163,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($rows as [$name, $amount, $category, $date]) {
             Income::firstOrCreate(
-                ['name' => $name, 'received_on' => $date],
+                ['user_id' => $this->userId, 'name' => $name, 'received_on' => $date],
                 ['amount' => $amount, 'category_id' => $cat[$category] ?? null],
             );
         }
@@ -158,7 +178,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($rows as [$name, $description, $color, $target]) {
             Treasury::firstOrCreate(
-                ['name' => $name],
+                ['user_id' => $this->userId, 'name' => $name],
                 ['description' => $description, 'color' => $color, 'target_cents' => $target],
             );
         }
@@ -178,7 +198,7 @@ class DatabaseSeeder extends Seeder
 
         foreach ($rows as $i => [$title, $priority, $due]) {
             Task::firstOrCreate(
-                ['title' => $title],
+                ['user_id' => $this->userId, 'title' => $title],
                 [
                     'status' => Task::TODO,
                     'priority' => $priority,

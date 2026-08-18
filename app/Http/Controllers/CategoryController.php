@@ -63,8 +63,14 @@ class CategoryController extends Controller
         return $request->validate([
             'name' => [
                 'required', 'string', 'max:60',
+                // Cadré sur le propriétaire : la règle `unique` interroge la
+                // table directement et échappe donc au scope global du modèle.
+                // Sans le `user_id`, deux utilisateurs ne pourraient pas avoir
+                // chacun leur catégorie « Alimentation ».
                 Rule::unique('categories', 'name')
-                    ->where(fn ($q) => $q->where('type', $request->input('type')))
+                    ->where(fn ($q) => $q
+                        ->where('type', $request->input('type'))
+                        ->where('user_id', $request->user()->id))
                     ->ignore($category?->id),
             ],
             'type' => ['required', Rule::in([Category::TYPE_INCOME, Category::TYPE_EXPENSE])],

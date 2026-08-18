@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToUser;
 use App\Concerns\HasAmount;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -9,9 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Income extends Model
 {
-    use HasAmount;
+    use BelongsToUser, HasAmount;
 
-    protected $fillable = ['name', 'amount', 'amount_cents', 'category_id', 'received_on', 'notes'];
+    protected $fillable = ['user_id', 'name', 'amount', 'amount_cents', 'category_id', 'received_on', 'notes'];
 
     protected function casts(): array
     {

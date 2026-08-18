@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\Category;
 use App\Models\Expense;
 use App\Models\Treasury;
+use App\Models\User;
 use App\Models\TreasuryMovement;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
@@ -22,8 +23,17 @@ class DemoSeeder extends Seeder
 
     public function run(): void
     {
+        $user = User::orderBy('id')->first();
+
+        if (! $user) {
+            $this->command?->warn('Aucun compte : rien à semer.');
+
+            return;
+        }
+
         $month = CarbonImmutable::now()->startOfMonth();
-        $categories = Category::expense()->pluck('id', 'name');
+        $categories = Category::forUser($user)->where('type', Category::TYPE_EXPENSE)
+            ->pluck('id', 'name');
 
         // [jour du mois, libellé, montant, catégorie]
         $rows = [
@@ -48,6 +58,7 @@ class DemoSeeder extends Seeder
             }
 
             Expense::create([
+                'user_id' => $user->id,
                 'name' => $name,
                 'amount' => $amount,
                 'category_id' => $categories[$category] ?? null,
@@ -61,6 +72,7 @@ class DemoSeeder extends Seeder
             $past = $month->subMonths($back);
 
             Expense::create([
+                'user_id' => $user->id,
                 'name' => 'Dépenses du mois',
                 'amount' => 900 + ($back * 63),
                 'category_id' => $categories['Divers'] ?? null,
@@ -69,17 +81,18 @@ class DemoSeeder extends Seeder
             ]);
         }
 
-        $this->treasuryMovements($month);
+        $this->treasuryMovements($month, $user->id);
     }
 
-    private function treasuryMovements(CarbonImmutable $month): void
+    private function treasuryMovements(CarbonImmutable $month, int $userId): void
     {
-        $epargne = Treasury::where('name', 'Épargne')->first();
-        $tva = Treasury::where('name', 'Réserve TVA')->first();
+        $epargne = Treasury::forUser($userId)->where('name', 'Épargne')->first();
+        $tva = Treasury::forUser($userId)->where('name', 'Réserve TVA')->first();
 
         if ($epargne) {
             $epargne->movements()->createMany([
                 [
+                    'user_id' => $userId,
                     'direction' => TreasuryMovement::IN,
                     'amount' => 500.00,
                     'label' => 'Prestation SVS RENOV',
@@ -87,6 +100,7 @@ class DemoSeeder extends Seeder
                     'notes' => self::MARKER,
                 ],
                 [
+                    'user_id' => $userId,
                     'direction' => TreasuryMovement::IN,
                     'amount' => 300.00,
                     'label' => 'Virement mensuel',
@@ -94,6 +108,7 @@ class DemoSeeder extends Seeder
                     'notes' => self::MARKER,
                 ],
                 [
+                    'user_id' => $userId,
                     'direction' => TreasuryMovement::OUT,
                     'amount' => 219.00,
                     'label' => 'Achat écran 27"',
@@ -105,6 +120,7 @@ class DemoSeeder extends Seeder
 
         if ($tva) {
             $tva->movements()->create([
+                'user_id' => $userId,
                 'direction' => TreasuryMovement::IN,
                 'amount' => 315.00,
                 'label' => 'TVA sur facture SVS RENOV',

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Support\DefaultCategories;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
@@ -101,9 +102,9 @@ class CreateUser extends Command
             ? "Mot de passe mis à jour pour {$user->email}."
             : "Compte créé : {$user->email}.");
 
-        if (User::count() > 1) {
-            $this->warn('Attention : il y a maintenant '.User::count().' comptes. '
-                .'RinOr est pensée pour un seul utilisateur — les données ne sont pas cloisonnées par compte.');
+        if (! $existing) {
+            $count = DefaultCategories::createFor($user);
+            $this->line("  {$count} catégories de départ créées.");
         }
 
         return self::SUCCESS;

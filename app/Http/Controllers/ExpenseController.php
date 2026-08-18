@@ -7,6 +7,7 @@ use App\Models\Expense;
 use App\Support\MonthCursor;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -66,7 +67,13 @@ class ExpenseController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'amount' => ['required', 'numeric', 'min:0', 'max:10000000'],
-            'category_id' => ['nullable', 'exists:categories,id'],
+            // `exists` interroge la table sans le scope global : sans ce
+            // `where`, on pourrait rattacher une écriture à la catégorie d'un
+            // autre utilisateur en devinant son id.
+            'category_id' => [
+                'nullable',
+                Rule::exists('categories', 'id')->where('user_id', $request->user()->id),
+            ],
             'spent_on' => ['required', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);

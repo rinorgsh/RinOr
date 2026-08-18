@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToUser;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Treasury extends Model
 {
-    protected $fillable = ['name', 'description', 'color', 'target_cents'];
+    use BelongsToUser;
+
+    protected $fillable = ['user_id', 'name', 'description', 'color', 'target_cents'];
 
     protected $appends = ['balance_cents'];
 

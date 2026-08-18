@@ -11,9 +11,14 @@ class SubscriptionSummaryTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $user;
+
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
 
         Subscription::create(['name' => 'Spotify', 'amount' => 6.99, 'cycle' => 'monthly']);
         Subscription::create(['name' => 'Claude', 'amount' => 108.90, 'cycle' => 'monthly']);
@@ -23,8 +28,7 @@ class SubscriptionSummaryTest extends TestCase
 
     private function summary(): array
     {
-        return $this->actingAs(User::factory()->create())
-            ->get('/abonnements')
+        return $this->get('/abonnements')
             ->inertiaProps()['summary'];
     }
 

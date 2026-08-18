@@ -14,6 +14,18 @@ class MoneyTest extends TestCase
 {
     use RefreshDatabase;
 
+    private User $user;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Les modèles refusent d'être créés sans propriétaire : on se connecte
+        // une fois, le trait renseigne `user_id` tout seul ensuite.
+        $this->user = User::factory()->create();
+        $this->actingAs($this->user);
+    }
+
     public function test_les_montants_sont_stockes_en_centimes_entiers(): void
     {
         $expense = Expense::create([
@@ -75,7 +87,6 @@ class MoneyTest extends TestCase
 
     public function test_on_ne_peut_pas_retirer_plus_que_le_solde(): void
     {
-        $user = User::factory()->create();
         $caisse = Treasury::create(['name' => 'Épargne', 'color' => '#1baf7a']);
 
         $caisse->movements()->create([
@@ -85,8 +96,7 @@ class MoneyTest extends TestCase
             'occurred_on' => '2026-08-01',
         ]);
 
-        $this->actingAs($user)
-            ->post("/tresorerie/{$caisse->id}/mouvements", [
+        $this->post("/tresorerie/{$caisse->id}/mouvements", [
                 'direction' => 'out',
                 'amount' => 150,
                 'label' => 'Trop gros',
@@ -101,8 +111,6 @@ class MoneyTest extends TestCase
 
     public function test_supprimer_une_categorie_conserve_les_ecritures(): void
     {
-        $user = User::factory()->create();
-
         $category = \App\Models\Category::create([
             'name' => 'Alimentation',
             'type' => 'expense',
@@ -116,7 +124,7 @@ class MoneyTest extends TestCase
             'spent_on' => '2026-08-17',
         ]);
 
-        $this->actingAs($user)->delete("/categories/{$category->id}")->assertRedirect();
+        $this->delete("/categories/{$category->id}")->assertRedirect();
 
         // L'écriture survit, elle perd juste sa catégorie.
         $this->assertDatabaseHas('expenses', ['id' => $expense->id, 'category_id' => null]);

@@ -17,8 +17,10 @@ class SmokeTest extends TestCase
     {
         parent::setUp();
 
-        $this->seed(DatabaseSeeder::class);
+        // Ordre imposé : le seeder attribue ses données au premier compte,
+        // il ne peut donc pas tourner avant qu'un compte existe.
         $this->user = User::factory()->create();
+        $this->seed(DatabaseSeeder::class);
     }
 
     /** Chaque page se rend, avec des données réelles derrière. */

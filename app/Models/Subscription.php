@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToUser;
 use App\Concerns\HasAmount;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -9,14 +10,14 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Subscription extends Model
 {
-    use HasAmount;
+    use BelongsToUser, HasAmount;
 
     public const CYCLE_MONTHLY = 'monthly';
 
     public const CYCLE_YEARLY = 'yearly';
 
     protected $fillable = [
-        'name', 'amount', 'amount_cents', 'cycle',
+        'user_id', 'name', 'amount', 'amount_cents', 'cycle',
         'category_id', 'next_due_on', 'is_active', 'notes',
     ];
 

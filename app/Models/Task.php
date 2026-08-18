@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToUser;
 use Illuminate\Database\Eloquent\Model;
 
 class Task extends Model
 {
+    use BelongsToUser;
+
     public const TODO = 'todo';
 
     public const DOING = 'doing';
@@ -16,7 +19,7 @@ class Task extends Model
 
     public const PRIORITIES = ['low', 'normal', 'high'];
 
-    protected $fillable = ['title', 'status', 'priority', 'due_on', 'notes', 'position', 'completed_at'];
+    protected $fillable = ['user_id', 'title', 'status', 'priority', 'due_on', 'notes', 'position', 'completed_at'];
 
     protected $appends = ['is_overdue'];
 

@@ -2,20 +2,21 @@
 
 namespace App\Models;
 
+use App\Concerns\BelongsToUser;
 use App\Concerns\HasAmount;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class TreasuryMovement extends Model
 {
-    use HasAmount;
+    use BelongsToUser, HasAmount;
 
     public const IN = 'in';
 
     public const OUT = 'out';
 
     protected $fillable = [
-        'treasury_id', 'direction', 'amount', 'amount_cents',
+        'user_id', 'treasury_id', 'direction', 'amount', 'amount_cents',
         'label', 'occurred_on', 'notes',
     ];
 

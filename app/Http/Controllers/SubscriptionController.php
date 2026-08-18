@@ -112,7 +112,13 @@ class SubscriptionController extends Controller
             'name' => ['required', 'string', 'max:120'],
             'amount' => ['required', 'numeric', 'min:0', 'max:1000000'],
             'cycle' => ['required', Rule::in([Subscription::CYCLE_MONTHLY, Subscription::CYCLE_YEARLY])],
-            'category_id' => ['nullable', 'exists:categories,id'],
+            // `exists` interroge la table sans le scope global : sans ce
+            // `where`, on pourrait rattacher une écriture à la catégorie d'un
+            // autre utilisateur en devinant son id.
+            'category_id' => [
+                'nullable',
+                Rule::exists('categories', 'id')->where('user_id', $request->user()->id),
+            ],
             'next_due_on' => ['nullable', 'date'],
             'is_active' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:1000'],

@@ -60,19 +60,40 @@ composer dev      # serveur + vite (php artisan dev)
 ## Données
 
 ```bash
-php artisan migrate:fresh --seed          # catégories, abonnements, rentrées, caisses, tâches
+php artisan migrate:fresh --force
+php artisan app:create-user               # AVANT le seeder : il attribue les données à un compte
+php artisan db:seed --force               # catégories, abonnements, rentrées, caisses, tâches
 php artisan db:seed --class=DemoSeeder    # + dépenses fictives, pour voir le tableau peuplé
 php artisan app:clear-demo                # retire uniquement les données [démo]
 ```
+
+L'ordre compte : le seeder attribue tout au premier compte, il ne fait donc
+rien s'il n'y en a aucun.
 
 Le seeder principal contient de **vraies** données reprises de l'ancien Excel :
 20 abonnements (montants TTC), les rentrées encaissées en 2026, deux caisses
 (dont une réserve TVA) et six tâches issues des anomalies repérées.
 
-## Accès
+## Accès et cloisonnement
 
-Mono-utilisateur, **sans route d'inscription** : une URL publique n'expose donc
-aucun formulaire de création de compte. Le compte se crée en ligne de commande.
+**Chaque compte ne voit que ses propres données.** Les sept tables portent un
+`user_id`, et le trait `App\Concerns\BelongsToUser` applique deux garanties :
+
+1. Un **scope global** filtre toute requête sur l'utilisateur connecté. C'est
+   une liste blanche : on n'écrit jamais `where('user_id', ...)` dans un
+   contrôleur, parce qu'il suffit de l'oublier une fois pour exposer les
+   finances de quelqu'un d'autre. La liaison implicite de route en hérite : l'id
+   d'un autre utilisateur renvoie 404, pas 403.
+2. `user_id` est **imposé à la création**, jamais lu depuis le formulaire.
+
+Attention aux règles de validation `unique` et `exists` : elles interrogent la
+table directement et **échappent au scope**. Elles sont explicitement cadrées
+sur `user_id` dans `CategoryController` (unicité du nom par compte) et partout
+où `category_id` est validé (sinon on rattache une écriture à la catégorie
+d'autrui en devinant son id). `IsolationTest` verrouille ces deux cas.
+
+Il n'y a pas encore de route d'inscription : les comptes se créent en ligne de
+commande.
 
 ```bash
 php artisan app:create-user                       # interactif
@@ -82,9 +103,24 @@ echo 'mot-de-passe' | php artisan app:create-user --email=toi@exemple.be
 Le mot de passe se lit sur stdin en non-interactif plutôt qu'en argument : un
 argument atterrirait dans l'historique du shell et dans la liste des processus.
 
+Un nouveau compte reçoit 14 catégories de départ génériques — il n'hérite
+d'aucune donnée d'un autre utilisateur.
+
 Toutes les routes sont derrière `auth`. Les tentatives de connexion sont
 limitées à 5 par minute et par couple e-mail + IP, et le message d'erreur est
 identique que l'adresse existe ou non.
+
+### Reprise de données existantes
+
+Si la migration de cloisonnement a tourné avant qu'un compte existe, les lignes
+sont orphelines et invisibles. Une fois le compte créé :
+
+```bash
+php artisan app:claim-data toi@exemple.be
+```
+
+Les catégories orphelines qui portent le même nom qu'une catégorie par défaut
+sont **fusionnées** : les écritures sont repointées, le doublon disparaît.
 
 ## Installation sur l'écran d'accueil (PWA)
 
@@ -223,10 +259,15 @@ en provisionne un par défaut), c'est un changement de `DB_*` et rien d'autre.
 ## Tests
 
 ```bash
-php artisan test        # 28 tests
+php artisan test        # 41 tests
 ```
 
-Ils couvrent : chaque page derrière `auth`, l'absence de route d'inscription,
+`IsolationTest` décrit huit manières concrètes dont les finances d'un compte
+pourraient fuiter chez un autre : listes, liaison de route en lecture et en
+écriture, `category_id` emprunté, `user_id` injecté par le formulaire, totaux du
+tableau de bord, unicité des catégories, suppression en cascade.
+
+Le reste couvre : chaque page derrière `auth`, l'absence de route d'inscription,
 l'identité des messages d'erreur de connexion, la limitation des tentatives, le
 manifeste et les dimensions réelles de chaque icône déclarée, l'arithmétique en
 centimes, l'impossibilité de vider une caisse au-delà de son solde, la survie
